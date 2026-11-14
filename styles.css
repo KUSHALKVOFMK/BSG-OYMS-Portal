@@ -644,3 +644,6 @@ body.sidebar-open{overflow:hidden}
 .logbook-feature .activity-feature-icon{background:#f0e9fb;color:#76519d}.logbook-feature .activity-feature-label{color:#76519d}
 @media(max-width:760px){.bsg-calendar-shell{grid-template-columns:1fr}.bsg-calendar-side{border-left:0;border-top:1px solid #e3eaf2}.activity-feature-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.bsg-calendar-main{padding:17px 12px}.bsg-calendar-heading{align-items:flex-start;flex-direction:column}.calendar-month-controls{width:100%;justify-content:space-between}.calendar-day{min-height:43px}.calendar-weekdays,.calendar-days{gap:4px}.activity-feature-grid{grid-template-columns:1fr}.activity-feature-card{min-height:0}}
+
+/* Gallery media: keep video previews aligned with the existing image cards. */
+.gallery-card video,.gallery-admin-card video{display:block;width:100%;max-width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:#111;}
