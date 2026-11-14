@@ -1058,3 +1058,7 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
  .upcoming-empty-icon{flex-basis:34px;width:34px;height:34px}
  .upcoming-empty-note{display:none}
 }
+
+
+/* Reliable school badge image rendering across homepage, login and dashboard */
+.school-masthead .school-marks .school-badge-stack .school-emblem{display:block!important;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;object-position:center;opacity:1;visibility:visible}
