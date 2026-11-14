@@ -2,9 +2,10 @@
    Files remain on this browser/device until a shared cloud backend is connected. */
 (function (global) {
   const DB_NAME = "kvs_oyms_preview_files_v2";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const CIRCULARS = "circulars";
   const GALLERY = "gallery";
+  const SLIDES = "slides";
   const LEGACY_CIRCULARS = "kvs_oyms_demo_circulars_v1";
   const LEGACY_GALLERY = "kvs_oyms_demo_gallery_v1";
   const MIGRATION_KEY = "kvs_oyms_idb_migrated_v2";
@@ -22,6 +23,7 @@
         const db = request.result;
         if (!db.objectStoreNames.contains(CIRCULARS)) db.createObjectStore(CIRCULARS, { keyPath: "id" });
         if (!db.objectStoreNames.contains(GALLERY)) db.createObjectStore(GALLERY, { keyPath: "id" });
+        if (!db.objectStoreNames.contains(SLIDES)) db.createObjectStore(SLIDES, { keyPath: "id" });
       };
       request.onsuccess = function () { resolve(request.result); };
       request.onerror = function () { reject(request.error || new Error("Could not open browser file storage.")); };
@@ -128,6 +130,9 @@
     allPhotos: function () { return all(GALLERY); },
     savePhoto: function (record) { return put(GALLERY, record); },
     removePhoto: function (id) { return remove(GALLERY, id); },
+    allSlides: function () { return all(SLIDES); },
+    saveSlide: function (record) { return put(SLIDES, record); },
+    removeSlide: function (id) { return remove(SLIDES, id); },
     estimate: estimate,
     formatBytes: formatBytes,
     requestPersistentStorage: requestPersistentStorage
