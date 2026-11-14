@@ -38,6 +38,13 @@ officialCircularLink.target="_blank";
 officialCircularLink.rel="noopener noreferrer";
 officialCircularLink.textContent="BSG India Circulars ↗";
 nav.appendChild(officialCircularLink);
+const officialShopLink=document.createElement("a");
+officialShopLink.className="dash-external-nav";
+officialShopLink.href="https://shop.bsgindia.org/";
+officialShopLink.target="_blank";
+officialShopLink.rel="noopener noreferrer";
+officialShopLink.textContent="Buy BSG Materials ↗";
+nav.appendChild(officialShopLink);
 
 async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
