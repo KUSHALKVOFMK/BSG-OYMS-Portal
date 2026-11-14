@@ -586,3 +586,61 @@ body.sidebar-open{overflow:hidden}
  .circular-slide-inner a{font-size:9px;padding:8px 10px}
 }
 @media(max-width:390px){.nav-bar-title{display:none}.nav-bar-login{margin-left:auto}}
+
+
+/* BSG-inspired activity calendar and programme cards */
+.bsg-calendar-shell{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,.85fr);gap:0;max-width:1120px;margin:24px auto 0;border:1px solid #dfe7f0;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 12px 34px #17385f0d}
+.bsg-calendar-main{padding:22px 24px 18px}
+.bsg-calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
+.bsg-calendar-heading>div:first-child{display:grid;gap:5px}
+.calendar-eyebrow,.calendar-side-heading>span{font-size:9px;font-weight:900;letter-spacing:1.5px;color:#a27a2d}
+.bsg-calendar-heading h3,.calendar-side-heading h3{margin:0;color:#17385f;font-size:21px}
+.bsg-calendar-heading p{margin:0;color:#718096;font-size:11px}
+.calendar-month-controls{display:flex;align-items:center;gap:10px}
+.calendar-month-controls strong{min-width:125px;text-align:center;color:#17385f;font-size:13px}
+.calendar-month-controls button{width:32px;height:32px;border:1px solid #dce5ef;border-radius:9px;background:#f4f7fb;color:#17385f;font-size:22px;line-height:1;cursor:pointer}
+.calendar-month-controls button:hover{background:#e8eff8}
+.calendar-weekdays,.calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.calendar-weekdays{margin-bottom:7px}
+.calendar-weekdays span{text-align:center;padding:7px 0;color:#718096;font-size:10px;font-weight:800}
+.calendar-day{position:relative;min-height:55px;border:1px solid #edf1f6;border-radius:9px;background:#fff;color:#33445b;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.calendar-day:hover{border-color:#b8cbe2;background:#f6f9fd}
+.calendar-day.empty{border-color:transparent;background:transparent;cursor:default}
+.calendar-day.is-today{border-color:#c99d42;color:#17385f;font-weight:900;background:#fffaf0}
+.calendar-day.is-selected{outline:2px solid #2d6e9f;outline-offset:1px;background:#eef5fc}
+.calendar-event-mark{position:absolute;bottom:7px;width:5px;height:5px;border-radius:50%;background:#2d8a79}
+.calendar-legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;color:#718096;font-size:10px}
+.calendar-legend span{display:flex;align-items:center;gap:6px}
+.legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.event-dot{background:#2d8a79}.today-dot{background:#c99d42}
+.bsg-calendar-side{padding:23px 20px;background:linear-gradient(155deg,#f2f6fb,#f8f5fc);border-left:1px solid #e3eaf2}
+.calendar-side-heading{display:grid;gap:6px;margin-bottom:14px}
+.calendar-side-heading h3{font-size:17px}
+.calendar-event-list{display:grid;gap:10px;max-height:310px;overflow:auto}
+.calendar-event-item{display:flex;gap:11px;padding:11px;border:1px solid #e3eaf2;border-radius:11px;background:#fff}
+.calendar-event-item time{width:39px;min-width:39px;height:43px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:#eaf1fa;color:#214d7b}
+.calendar-event-item time b{font-size:16px;line-height:1.1}.calendar-event-item time span{font-size:9px;text-transform:uppercase;font-weight:800}
+.calendar-event-item>div{min-width:0;display:grid;gap:4px}
+.calendar-event-item strong{font-size:11px;line-height:1.35;color:#243c5b}
+.calendar-event-item small{font-size:9px;color:#748196}
+.calendar-event-item p{margin:2px 0 0;font-size:10px;line-height:1.4;color:#65758a}
+.calendar-empty{padding:18px 10px;text-align:center;border:1px dashed #d6e0eb;border-radius:11px;background:#ffffffa8;color:#718096}
+.calendar-empty>span{display:block;font-size:23px;color:#c49a3b;margin-bottom:5px}
+.calendar-empty b{display:block;color:#294766;font-size:11px}
+.calendar-empty p{font-size:10px;line-height:1.5;margin:6px 0 0}
+.calendar-official-link{display:flex;justify-content:center;align-items:center;margin-top:12px;padding:11px 10px;border-radius:8px;background:#17385f;color:#fff;text-align:center;text-decoration:none;font-size:9px;font-weight:900;letter-spacing:.45px}
+.calendar-official-link:hover{background:#28547f}
+.calendar-official-link.secondary{margin-top:7px;background:#e6edf6;color:#214d7b}
+.calendar-official-link.secondary:hover{background:#d6e3f2}
+.activity-feature-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;max-width:1120px;margin:17px auto 0}
+.activity-feature-card{position:relative;display:block;min-height:190px;padding:20px;border:1px solid #e3eaf2;border-radius:14px;background:#fff;color:#24364e;text-decoration:none;box-shadow:0 7px 20px #17385f08;transition:transform .18s ease,box-shadow .18s ease}
+.activity-feature-card:hover{transform:translateY(-3px);box-shadow:0 12px 25px #17385f14}
+.activity-feature-icon{display:grid;place-items:center;width:39px;height:39px;margin-bottom:12px;border-radius:12px;background:#fff3d8;color:#926b20;font-size:20px}
+.activity-feature-label{font-size:9px;font-weight:900;letter-spacing:1.2px;color:#9b762c}
+.activity-feature-card h3{margin:6px 0;font-size:16px;color:#17385f}
+.activity-feature-card p{margin:0 0 12px;font-size:11px;line-height:1.5;color:#69788c}
+.activity-feature-card>b{font-size:10px;color:#285b8c}
+.camps-feature .activity-feature-icon{background:#e3f5ef;color:#19776a}.camps-feature .activity-feature-label{color:#247b70}
+.logbook-feature .activity-feature-icon{background:#f0e9fb;color:#76519d}.logbook-feature .activity-feature-label{color:#76519d}
+@media(max-width:760px){.bsg-calendar-shell{grid-template-columns:1fr}.bsg-calendar-side{border-left:0;border-top:1px solid #e3eaf2}.activity-feature-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.bsg-calendar-main{padding:17px 12px}.bsg-calendar-heading{align-items:flex-start;flex-direction:column}.calendar-month-controls{width:100%;justify-content:space-between}.calendar-day{min-height:43px}.calendar-weekdays,.calendar-days{gap:4px}.activity-feature-grid{grid-template-columns:1fr}.activity-feature-card{min-height:0}}
