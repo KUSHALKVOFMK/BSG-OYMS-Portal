@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#4b287d"><title>Login | KVS-OYMS 2.0</title><link rel="stylesheet" href="styles.css"></head>
+<body class="auth-page">
+<header class="auth-top">
+ <div class="auth-logos">
+  <img src="https://cdn.bansalacademy.in/uploads/KVS%20logo__w3000.png" alt="KVS emblem">
+  <img src="https://media.scoutwiki.org/images/thumb/5/53/Bharat_Scouts_and_Guides.svg/644px-Bharat_Scouts_and_Guides.svg.png" alt="Bharat Scouts and Guides emblem">
+  <img class="anniv" src="https://in.zohocommercecdn.com/75%20Years%20BSG%20logo.png?storefront_domain=shop.bsgindia.org" alt="BSG 75 Years Diamond Jubilee emblem">
+ </div>
+ <div class="auth-brand"><strong>PM SHRI Kendriya Vidyalaya Ordnance Factory Medak</strong><span>KVS-OYMS 2.0 · Scouts &amp; Guides Management Portal</span></div>
+</header>
+<main class="auth-main"><section class="auth-card">
+ <h1>Portal Login</h1><p class="sub">Sign in to continue to your role-based dashboard.</p>
+ <div id="authMessage" class="auth-message" role="alert"></div>
+ <form id="loginForm">
+  <div class="auth-field"><label for="loginId">Login ID</label><input id="loginId" name="loginId" autocomplete="username" placeholder="Enter your Login ID" required></div>
+  <div class="auth-field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div>
+  <div class="auth-field"><label for="role">Login Role</label><select id="role" name="role" required><option value="">Select your role</option><option>Super Administrator</option><option>Administrator</option><option>Unit Leader</option><option>Assistant Unit Leader</option><option>Patrol Leader</option><option>Assistant Patrol Leader</option><option>Member</option></select></div>
+  <div class="auth-row"><label class="auth-check"><input type="checkbox" id="remember"> Remember this device</label><button type="button" class="auth-link" id="forgot">Forgot password?</button></div>
+  <button class="auth-btn" type="submit">Sign In</button>
+ </form>
+ <div class="demo-note"><b>Preview access only</b><br>Super Administrator demo: <b>DEMO-SUPER-001</b> / <b>DEMO-ONLY</b><br>This preview does not authenticate real accounts. Do not enter personal or school passwords. Secure sign-in will be connected after database setup.</div>
+ <a class="auth-back" href="index.html">← Back to public homepage</a>
+</section></main>
+<script src="login.js"></script></body></html>
