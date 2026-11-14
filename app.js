@@ -39,6 +39,44 @@ function initHeroSlideshow(){
  dots.forEach((dot,i)=>dot.addEventListener("click",()=>{show(i);restart();}));
  restart();
 }
+
+function initActivityCalendar(){
+ const daysRoot=document.getElementById("activityCalendarDays");
+ const eventsRoot=document.getElementById("activityCalendarEvents");
+ if(!daysRoot||!eventsRoot)return;
+ const storeKey="kvs_oyms_demo_events_v1";
+ const today=new Date();
+ let month=new Date(today.getFullYear(),today.getMonth(),1);
+ let selectedDate="";
+ const pad=n=>String(n).padStart(2,"0");
+ const dateKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+ const escHtml=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+ const readEvents=()=>{try{const rows=JSON.parse(localStorage.getItem(storeKey)||"[]");return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date||"")):[];}catch{return[];}};
+ const render=()=>{
+  const year=month.getFullYear(),m=month.getMonth(),first=new Date(year,m,1),last=new Date(year,m+1,0),events=readEvents();
+  const byDate={};events.forEach(e=>(byDate[e.date]??=[]).push(e));
+  document.getElementById("calendarMonthLabel").textContent=month.toLocaleDateString("en-IN",{month:"long",year:"numeric"});
+  document.getElementById("calendarEventsHeading").textContent=selectedDate?"Events on "+new Date(year,m,Number(selectedDate.slice(-2))).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"Events this month";
+  const offset=first.getDay(),cells=Math.ceil((offset+last.getDate())/7)*7;
+  let markup="";
+  for(let i=0;i<cells;i++){
+   const day=i-offset+1;
+   if(day<1||day>last.getDate()){markup+='<span class="calendar-day empty" aria-hidden="true"></span>';continue;}
+   const d=new Date(year,m,day),key=dateKey(d),has=(byDate[key]||[]).length>0,isToday=key===dateKey(today),isSelected=key===selectedDate;
+   markup+='<button type="button" class="calendar-day'+(has?' has-event':'')+(isToday?' is-today':'')+(isSelected?' is-selected':'')+'" data-calendar-date="'+key+'" aria-label="'+d.toLocaleDateString("en-IN",{dateStyle:"full"})+(has?', '+byDate[key].length+' published event(s)':'')+'"><span>'+day+'</span>'+(has?'<i class="calendar-event-mark"></i>':"")+'</button>';
+  }
+  daysRoot.innerHTML=markup;
+  daysRoot.querySelectorAll("[data-calendar-date]").forEach(b=>b.addEventListener("click",()=>{selectedDate=selectedDate===b.dataset.calendarDate?"":b.dataset.calendarDate;render();}));
+  const inMonth=events.filter(e=>{const d=new Date(e.date+"T00:00:00");return d.getFullYear()===year&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
+  const shown=selectedDate?inMonth.filter(e=>e.date===selectedDate):inMonth;
+  eventsRoot.innerHTML=shown.length?shown.map(e=>'<article class="calendar-event-item"><time datetime="'+escHtml(e.date)+'"><b>'+new Date(e.date+"T00:00:00").getDate()+'</b><span>'+new Date(e.date+"T00:00:00").toLocaleDateString("en-IN",{month:"short"})+'</span></time><div><strong>'+escHtml(e.title)+'</strong><small>'+escHtml(e.section||"All Sections")+(e.venue?" · "+escHtml(e.venue):"")+'</small>'+(e.description?'<p>'+escHtml(e.description)+'</p>':"")+'</div></article>').join(""):'<div class="calendar-empty"><span>✦</span><b>'+(selectedDate?"No published event on this date":"No published events this month")+'</b><p>School and unit events approved for publication will appear here.</p></div>';
+ };
+ document.getElementById("calendarPrev")?.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);selectedDate="";render();});
+ document.getElementById("calendarNext")?.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);selectedDate="";render();});
+ window.addEventListener("storage",e=>{if(e.key===storeKey)render();});
+ render();
+}
+
 function initSidebarNavigation(){
  const sidebar=document.getElementById("portalSidebar"),toggle=document.getElementById("menuToggle"),backdrop=document.getElementById("sidebarBackdrop"),close=document.getElementById("sidebarClose");
  if(!sidebar||!toggle||!backdrop)return;
