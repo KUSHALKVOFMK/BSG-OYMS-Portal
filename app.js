@@ -3,22 +3,17 @@ function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;
 function fileUrl(blob){return blob instanceof Blob?URL.createObjectURL(blob):"";}
 async function renderPublicCirculars(){
  const root=document.getElementById("publicCircularList");if(!root)return;
- const archive="https://www.bsgindia.org/circular.php";
- const official=[
-  {title:"Celebration of Indian Armed Forces Flag Day on 07th December, 2026",meta:"Observance date: 07 December 2026",number:"BSG circular details not supplied",summary:"Public circular subject shared for the PM SHRI KV OF Medak BSG portal."},
-  {title:"Circular No. 301/2026 — Observance of Human Rights Day on 10th December, 2026",meta:"Issue date: 10 November 2026",number:"Circular No. 301/2026",summary:"Observance of Human Rights Day on 10 December 2026."}
- ];
- const officialHtml=official.map(x=>'<article class="public-circular official-public-circular"><div class="circular-source-tag">OFFICIAL BSG INDIA ARCHIVE</div><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number)+'</b> · '+esc(x.meta)+'</p><p>'+esc(x.summary)+'</p><a href="'+archive+'" target="_blank" rel="noopener noreferrer">TOUCH TO VIEW ON BSG INDIA ↗</a></article>').join("");
  try{
   await PortalStorage.init();
   const items=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||"").localeCompare(a.publishedAt||""));
   const localHtml=items.map(x=>'<article class="public-circular"><div class="circular-source-tag">SCHOOL / UNIT NOTICE</div><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number||"Circular")+'</b> · '+esc(x.date||"")+' · '+esc(x.audience||"All sections")+'</p><p>'+esc(x.summary||"")+'</p>'+(x.fileBlob?'<a href="'+fileUrl(x.fileBlob)+'" target="_blank" rel="noopener">View attached PDF: '+esc(x.fileName||"Circular PDF")+'</a>':"")+'</article>').join("");
-  root.innerHTML=officialHtml+localHtml;
- }catch(error){root.innerHTML=officialHtml+'<p class="muted">School circular storage is not available in this browser.</p>';console.error(error);}
+  root.innerHTML=localHtml||'<p class="muted">No school or unit circulars have been published yet.</p>';
+ }catch(error){root.innerHTML='<p class="muted">School circular storage is not available in this browser.</p>';console.error(error);}
 }
 document.addEventListener("DOMContentLoaded",async()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  const contactLogin=document.getElementById("contactLogin");if(contactLogin)contactLogin.onclick=()=>window.location.href="login.html";
+ initSidebarNavigation();
  await PortalStorage.init();
  renderPublicCirculars();
  renderPublicGallery();
@@ -43,4 +38,19 @@ function initHeroSlideshow(){
  document.querySelector(".slide-arrow.next")?.addEventListener("click",()=>{show(current+1);restart();});
  dots.forEach((dot,i)=>dot.addEventListener("click",()=>{show(i);restart();}));
  restart();
+}
+function initSidebarNavigation(){
+ const sidebar=document.getElementById("portalSidebar"),toggle=document.getElementById("menuToggle"),backdrop=document.getElementById("sidebarBackdrop"),close=document.getElementById("sidebarClose");
+ if(!sidebar||!toggle||!backdrop)return;
+ const setOpen=open=>{
+  sidebar.classList.toggle("open",open);
+  backdrop.classList.toggle("open",open);
+  document.body.classList.toggle("sidebar-open",open);
+  toggle.setAttribute("aria-expanded",String(open));
+ };
+ toggle.addEventListener("click",()=>setOpen(!sidebar.classList.contains("open")));
+ close?.addEventListener("click",()=>setOpen(false));
+ backdrop.addEventListener("click",()=>setOpen(false));
+ sidebar.querySelectorAll("a").forEach(link=>link.addEventListener("click",()=>setOpen(false)));
+ document.addEventListener("keydown",event=>{if(event.key==="Escape")setOpen(false);});
 }
