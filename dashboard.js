@@ -1,5 +1,6 @@
 const SESSION_KEY="kvs_oyms_demo_session";
 const CIRCULARS_KEY="kvs_oyms_demo_circulars_v1";
+const GALLERY_KEY="kvs_oyms_demo_gallery_v1";
 let session=null;
 try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
 if(!session||!session.demo){window.location.replace("login.html");}
@@ -10,7 +11,7 @@ const nav=document.getElementById("dashNav");
 document.getElementById("signedInAs").textContent=(session?.name||role)+" · Demo preview";
 document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="login.html";});
 const items=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"]];
-if(isSuper)items.push(["manage","Manage Circulars"]);
+if(isSuper){items.push(["manage","Manage Circulars"]);items.push(["gallery","Manage Gallery"]);}
 items.forEach(([id,label])=>{const b=document.createElement("button");b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function read(){try{return JSON.parse(localStorage.getItem(CIRCULARS_KEY)||"[]");}catch{return [];}}
@@ -20,6 +21,7 @@ function showView(view){
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
  if(view==="manage"&&isSuper)return manageCirculars();
+ if(view==="gallery"&&isSuper)return manageGallery();
  overview();
 }
 function overview(){
@@ -77,3 +79,31 @@ function changeCircular(id,action){
  save(list);renderCircularTable();
 }
 showView("overview");
+function readGallery(){try{return JSON.parse(localStorage.getItem(GALLERY_KEY)||"[]");}catch{return [];}}
+function saveGallery(list){localStorage.setItem(GALLERY_KEY,JSON.stringify(list));}
+function manageGallery(){
+ if(!isSuper){overview();return;}
+ main.innerHTML='<h1>Manage Gallery</h1><p>Upload school-approved Scout and Guide activity photographs. Publish them to the public homepage gallery.</p><div class="dash-alert"><b>Preview mode:</b> Photos are saved only in this browser. Other visitors and devices will not see them until cloud storage is connected. Upload only school-approved photos and avoid images showing private student information.</div><form id="galleryForm"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; max 400 KB)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Upload &amp; Publish Photo</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
+ document.getElementById("galleryForm").addEventListener("submit",uploadGalleryPhoto);
+ renderGalleryTable();
+}
+async function uploadGalleryPhoto(event){
+ event.preventDefault();
+ const file=document.getElementById("galleryImage").files[0];
+ if(!file)return;
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Please choose a JPG, PNG or WebP image.");return;}
+ if(file.size>400*1024){alert("Please choose an image smaller than 400 KB for this preview.");return;}
+ const imageData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
+ const list=readGallery();
+ list.unshift({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageData,status:"Published",createdAt:new Date().toISOString()});
+ try{saveGallery(list);}catch{alert("Browser storage is full. Please use a smaller image or remove older preview photos.");return;}
+ document.getElementById("galleryForm").reset();renderGalleryTable();
+ alert("Photo added to this browser preview gallery. It is not yet visible to other devices.");
+}
+function renderGalleryTable(){
+ const root=document.getElementById("galleryTable");if(!root)return;
+ const list=readGallery();
+ if(!list.length){root.innerHTML='<div class="dash-empty">No photos uploaded yet.</div>';return;}
+ root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
+ root.querySelectorAll("[data-remove]").forEach(button=>button.addEventListener("click",()=>{if(!confirm("Remove this photo from the preview gallery?"))return;saveGallery(readGallery().filter(x=>x.id!==button.dataset.remove));renderGalleryTable();}));
+}
