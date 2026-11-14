@@ -8,7 +8,7 @@ const SETTINGS_KEY="kvs_oyms_demo_portal_settings_v1";
 const LOGS_KEY="kvs_oyms_demo_activity_logs_v1";
 let session=null;
 try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
-if(!session||!session.demo){window.location.replace("login.html");}
+if(!session||!session.demo){window.location.replace("../../login/");}
 const role=session?.role||"Member";
 const isSuper=role==="Super Administrator";
 const canReview=role==="Administrator"||isSuper;
@@ -16,7 +16,7 @@ const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 const actor=session?.name||role;
 document.getElementById("signedInAs").textContent=actor+" · Demo preview";
-document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="login.html";});
+document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="../../login/";});
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function readLocal(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
