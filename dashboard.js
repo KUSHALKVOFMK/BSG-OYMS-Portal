@@ -368,11 +368,12 @@ async function uploadHomepageSlide(event){
  const ext=(file.name.split(".").pop()||"").toLowerCase(),typeByExt={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"};
  const mime=["image/jpeg","image/png","image/webp"].includes(file.type)?file.type:typeByExt[ext];
  if(!mime){setSlideUploadStatus("Unsupported image format. Please choose a JPG, PNG or WebP image.","error");return;}
- if(file.size>15*1024*1024){setSlideUploadStatus("This image is larger than 15 MB. Please choose a smaller image.","error");return;}
- button.disabled=true;button.textContent="Uploading…";setSlideUploadStatus("Preparing image and saving it to this browser…","loading");
+ if(!file.size){setSlideUploadStatus("The selected image is empty. Please choose another image.","error");return;}
+  if(file.size>15*1024*1024){setSlideUploadStatus("This image is larger than 15 MB. Please choose a smaller image.","error");return;}
+ if(button){button.disabled=true;button.textContent="Uploading…";}setSlideUploadStatus("Preparing image and saving it to this browser…","loading");
  try{
   await PortalStorage.init();
-  const imageBlob=new Blob([await file.arrayBuffer()],{type:mime});
+  const imageBlob=file.slice(0,file.size,mime);
   if(typeof createImageBitmap==="function"){
    const bitmap=await createImageBitmap(imageBlob);
    if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error("The selected image has no readable dimensions.");}
