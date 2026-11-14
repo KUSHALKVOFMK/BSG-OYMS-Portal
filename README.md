@@ -6,6 +6,7 @@ Independent front-end prototype for PM SHRI Kendriya Vidyalaya Ordnance Factory 
 - Responsive public homepage with four-slide Scouts & Guides hero carousel.
 - Separate login page and role-based preview dashboards.
 - Expanded Super Administrator preview: school and personal details, administrator approvals, all demo Login IDs, Cubs/Bulbuls/Scouts/Guides group management, circulars, photo gallery verification, reports, activity logs, account controls, portal settings, freeze/unfreeze approvals and demo accounts.
+- Added a dedicated Super Admin User Management demo with account totals, role filters, searchable directory, profile details, Admin creation, activate/suspend confirmations, password-reset initiation, approval review and per-account history. It uses clearly labelled local demo data only.
 - Circular PDFs and gallery photos use IndexedDB browser storage rather than the old 1 MB localStorage limit.
 - No live authentication, database, cloud file storage, email or cross-device sync yet.
 
