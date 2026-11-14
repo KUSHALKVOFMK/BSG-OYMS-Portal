@@ -51,7 +51,7 @@ function initActivityCalendar(){
  const pad=n=>String(n).padStart(2,"0");
  const dateKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
  const escHtml=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
- const readEvents=()=>{try{const rows=JSON.parse(localStorage.getItem(storeKey)||"[]");return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date||"")):[];}catch{return[];}};
+ const readEvents=()=>{try{const rows=JSON.parse(localStorage.getItem(storeKey)||"[]");return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\d{4}-\d{2}-\d{2}$/.test(x.date||"")):[];}catch{return[];}};
  const render=()=>{
   const year=month.getFullYear(),m=month.getMonth(),first=new Date(year,m,1),last=new Date(year,m+1,0),events=readEvents();
   const byDate={};events.forEach(e=>(byDate[e.date]??=[]).push(e));
