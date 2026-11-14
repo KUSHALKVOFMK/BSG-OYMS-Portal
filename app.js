@@ -1,4 +1,5 @@
 const CIRCULARS_KEY="kvs_oyms_demo_circulars_v1";
+const GALLERY_KEY="kvs_oyms_demo_gallery_v1";
 function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function readCirculars(){try{return JSON.parse(localStorage.getItem(CIRCULARS_KEY)||"[]");}catch{return [];}}
 function renderPublicCirculars(){
@@ -10,4 +11,12 @@ function renderPublicCirculars(){
 document.addEventListener("DOMContentLoaded",()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  renderPublicCirculars();
+ renderPublicGallery();
 });
+function renderPublicGallery(){
+ const root=document.getElementById("publicGallery");if(!root)return;
+ let items=[];try{items=JSON.parse(localStorage.getItem(GALLERY_KEY)||"[]");}catch{}
+ items=items.filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+ if(!items.length){root.innerHTML='<p class="muted">No photographs have been published yet.</p>';return;}
+ root.innerHTML=items.map(x=>'<figure class="gallery-card"><img src="'+x.imageData+'" alt="'+esc(x.title||"School Scout and Guide activity")+'"><figcaption><b>'+esc(x.title||"Activity photograph")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>').join("");
+}
