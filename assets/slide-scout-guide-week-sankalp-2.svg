@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" role="img" aria-labelledby="t d">
+<title id="t">Scout Guide Week — Launch of Sankalp 2.0 Portal</title><desc id="d">Scouts and Guides celebrate Scout Guide Week and the Sankalp 2.0 portal launch.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#10275c"/><stop offset=".58" stop-color="#17649a"/><stop offset="1" stop-color="#66b8a0"/></linearGradient><linearGradient id="gold" x2="1"><stop stop-color="#ffd86b"/><stop offset="1" stop-color="#f3a82b"/></linearGradient></defs>
+<rect width="1600" height="500" fill="url(#bg)"/><circle cx="1270" cy="220" r="280" fill="#fff" opacity=".07"/>
+<svg x="930" y="0" width="670" height="500" viewBox="900 0 700 500" preserveAspectRatio="xMidYMid slice"><image href="scout-service.svg" x="0" y="0" width="1600" height="500"/></svg>
+<path d="M0 0H1040V500H0Z" fill="#081d48" opacity=".56"/>
+<text x="95" y="90" font-family="Arial,sans-serif" font-size="34" font-weight="800" fill="#ffd66c" letter-spacing="3">12–18 NOVEMBER</text>
+<text x="95" y="180" font-family="Arial,sans-serif" font-size="72" font-weight="900" fill="#fff">SCOUT GUIDE WEEK</text>
+<rect x="95" y="210" width="690" height="7" rx="4" fill="url(#gold)"/>
+<text x="95" y="290" font-family="Arial,sans-serif" font-size="37" font-weight="800" fill="#fff">LAUNCH OF</text><text x="95" y="370" font-family="Arial,sans-serif" font-size="74" font-weight="900" fill="#ffd66c">SANKALP 2.0</text>
+<text x="98" y="425" font-family="Arial,sans-serif" font-size="29" font-weight="700" fill="#e6f4ff">Explore  •  Serve  •  Grow</text>
+<rect x="95" y="448" width="460" height="4" fill="#fff" opacity=".7"/>
+</svg>
