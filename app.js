@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  const contactLogin=document.getElementById("contactLogin");if(contactLogin)contactLogin.onclick=()=>window.location.href="login.html";
  initSidebarNavigation();
+ initTemporaryMenuLinks();
  initActivityCalendar();
  await PortalStorage.init();
  renderPublicCirculars();
@@ -110,6 +111,13 @@ function initActivityCalendar(){
  document.getElementById("calendarNext")?.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);selectedDate="";render();});
  window.addEventListener("storage",e=>{if(e.key===storeKey)render();});
  render();
+}
+
+function initTemporaryMenuLinks(){
+ const link=document.getElementById("scoutGuideWeekTemporaryLink");
+ if(!link)return;
+ const expiry=new Date(2026,10,30,23,59,59,999);
+ if(Date.now()>expiry)link.remove();
 }
 
 function initSidebarNavigation(){
