@@ -19,3 +19,12 @@ IndexedDB capacity depends on the visitor's browser and device. Files remain on 
 
 ## Important
 This is an independently developed school portal prototype, not an official KVS application. Demo data is local to the browser. Secure account approvals, password/Login ID resets, audit logs and account suspension must be enforced by a server-side backend before real use.
+
+## Approved homepage and programme improvements
+- Homepage Upcoming Programmes strip shows up to three future published events.
+- Super Administrator slideshow controls support ordering, hide/show, and an optional display end date.
+- Public school/unit circulars render in a Date / Number / Subject / Download / View archive table.
+- Event records support optional programme time, organiser, attachment URL and registration URL.
+
+## Security and production-readiness plan
+See [SECURITY-AND-PRODUCTION-PLAN.md](SECURITY-AND-PRODUCTION-PLAN.md) for the staged checklist. These improvements do not activate a production backend or change the demo authentication model. Do not enter real student data or personal passwords until the school has approved the production design and server-side controls have been implemented and tested.
