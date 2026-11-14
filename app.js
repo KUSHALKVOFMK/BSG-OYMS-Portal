@@ -5,10 +5,34 @@ async function renderPublicCirculars(){
  const root=document.getElementById("publicCircularList");if(!root)return;
  try{
   await PortalStorage.init();
-  const items=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||"").localeCompare(a.publishedAt||""));
-  const localHtml=items.map(x=>'<article class="public-circular"><div class="circular-source-tag">SCHOOL / UNIT NOTICE</div><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number||"Circular")+'</b> · '+esc(x.date||"")+' · '+esc(x.audience||"All sections")+'</p><p>'+esc(x.summary||"")+'</p>'+(x.fileBlob?'<a href="'+fileUrl(x.fileBlob)+'" target="_blank" rel="noopener">View attached PDF: '+esc(x.fileName||"Circular PDF")+'</a>':"")+'</article>').join("");
-  root.innerHTML=localHtml||'<p class="muted">No school or unit circulars have been published yet.</p>';
- }catch(error){root.innerHTML='<p class="muted">School circular storage is not available in this browser.</p>';console.error(error);}
+  const items=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.publishedAt||"").localeCompare(a.publishedAt||""));
+  if(!items.length){root.innerHTML='<tr><td colspan="5" class="muted">No school or unit circulars have been published yet.</td></tr>';return;}
+  root.innerHTML=items.map(x=>{
+   const href=x.fileBlob instanceof Blob?fileUrl(x.fileBlob):"";
+   const date=x.date?new Date(x.date+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";
+   return '<tr><td>'+esc(date)+'</td><td>'+esc(x.number||"—")+'</td><td><strong>'+esc(x.title)+'</strong><small>'+esc(x.audience||"All sections")+(x.summary?' · '+esc(x.summary):"")+'</small></td><td>'+(href?'<a href="'+href+'" download="'+esc(x.fileName||"circular.pdf")+'">Download</a>':'—')+'</td><td>'+(href?'<a href="'+href+'" target="_blank" rel="noopener">View</a>':'—')+'</td></tr>';
+  }).join("");
+ }catch(error){root.innerHTML='<tr><td colspan="5" class="muted">School circular storage is not available in this browser.</td></tr>';console.error(error);}
+}
+function safeHttpUrl(value){
+ try{const url=new URL(String(value||""));return url.protocol==="https:"||url.protocol==="http:"?url.href:"";}catch{return "";}
+}
+function readPublishedEvents(){
+ try{
+  const rows=JSON.parse(localStorage.getItem("kvs_oyms_demo_events_v1")||"[]");
+  return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\d{4}-\d{2}-\d{2}$/.test(x.date||"")):[];
+ }catch{return [];}
+}
+function initUpcomingProgrammes(){
+ const root=document.getElementById("upcomingProgrammeList");if(!root)return;
+ const today=new Date();today.setHours(0,0,0,0);
+ const rows=readPublishedEvents().filter(x=>new Date(x.date+"T00:00:00")>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+ if(!rows.length){root.innerHTML='<div class="upcoming-empty">No upcoming programmes have been published yet. Published events will appear here.</div>';return;}
+ root.innerHTML=rows.map(x=>{
+  const d=new Date(x.date+"T00:00:00"),attach=safeHttpUrl(x.attachmentUrl),registration=safeHttpUrl(x.registrationUrl);
+  const details=[x.time,x.section||"All Sections",x.venue,x.organiser?"Organiser: "+x.organiser:""].filter(Boolean).map(esc).join(" · ");
+  return '<article class="upcoming-programme-card"><time datetime="'+esc(x.date)+'"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString("en-IN",{month:"short",year:"numeric"})+'</span></time><div class="upcoming-programme-copy"><h3>'+esc(x.title)+'</h3><p>'+details+'</p>'+(x.description?'<small>'+esc(x.description)+'</small>':"")+'<div class="upcoming-programme-links">'+(attach?'<a href="'+attach+'" target="_blank" rel="noopener noreferrer">Programme attachment ↗</a>':"")+(registration?'<a href="'+registration+'" target="_blank" rel="noopener noreferrer">Registration ↗</a>':"")+'</div></div></article>';
+ }).join("");
 }
 document.addEventListener("DOMContentLoaded",async()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
@@ -35,7 +59,8 @@ async function initHeroSlideshow(){
  if(!track||!dotsRoot)return;
  try{
   await PortalStorage.init();
-  const uploaded=(await PortalStorage.allSlides()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+  const todayKey=new Date().toISOString().slice(0,10);
+  const uploaded=(await PortalStorage.allSlides()).filter(x=>x.status==="Published"&&!x.archived&&(!x.displayUntil||x.displayUntil>=todayKey)).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)||(a.createdAt||"").localeCompare(b.createdAt||""));
   uploaded.forEach(item=>{
    if(!(item.imageBlob instanceof Blob))return;
    const slide=document.createElement("div");
@@ -77,24 +102,19 @@ async function initHeroSlideshow(){
 }
 
 function initActivityCalendar(){
- const daysRoot=document.getElementById("activityCalendarDays");
- const eventsRoot=document.getElementById("activityCalendarEvents");
+ const daysRoot=document.getElementById("activityCalendarDays"),eventsRoot=document.getElementById("activityCalendarEvents");
  if(!daysRoot||!eventsRoot)return;
- const storeKey="kvs_oyms_demo_events_v1";
- const today=new Date();
- let month=new Date(today.getFullYear(),today.getMonth(),1);
- let selectedDate="";
+ const storeKey="kvs_oyms_demo_events_v1",today=new Date();
+ let month=new Date(today.getFullYear(),today.getMonth(),1),selectedDate="";
  const pad=n=>String(n).padStart(2,"0");
  const dateKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
  const escHtml=v=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
- const readEvents=()=>{try{const rows=JSON.parse(localStorage.getItem(storeKey)||"[]");return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\d{4}-\d{2}-\d{2}$/.test(x.date||"")):[];}catch{return[];}};
  const render=()=>{
-  const year=month.getFullYear(),m=month.getMonth(),first=new Date(year,m,1),last=new Date(year,m+1,0),events=readEvents();
+  const year=month.getFullYear(),m=month.getMonth(),first=new Date(year,m,1),last=new Date(year,m+1,0),events=readPublishedEvents();
   const byDate={};events.forEach(e=>(byDate[e.date]??=[]).push(e));
   document.getElementById("calendarMonthLabel").textContent=month.toLocaleDateString("en-IN",{month:"long",year:"numeric"});
   document.getElementById("calendarEventsHeading").textContent=selectedDate?"Events on "+new Date(year,m,Number(selectedDate.slice(-2))).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"Events this month";
-  const offset=first.getDay(),cells=Math.ceil((offset+last.getDate())/7)*7;
-  let markup="";
+  const offset=first.getDay(),cells=Math.ceil((offset+last.getDate())/7)*7;let markup="";
   for(let i=0;i<cells;i++){
    const day=i-offset+1;
    if(day<1||day>last.getDate()){markup+='<span class="calendar-day empty" aria-hidden="true"></span>';continue;}
@@ -105,14 +125,16 @@ function initActivityCalendar(){
   daysRoot.querySelectorAll("[data-calendar-date]").forEach(b=>b.addEventListener("click",()=>{selectedDate=selectedDate===b.dataset.calendarDate?"":b.dataset.calendarDate;render();}));
   const inMonth=events.filter(e=>{const d=new Date(e.date+"T00:00:00");return d.getFullYear()===year&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
   const shown=selectedDate?inMonth.filter(e=>e.date===selectedDate):inMonth;
-  eventsRoot.innerHTML=shown.length?shown.map(e=>'<article class="calendar-event-item"><time datetime="'+escHtml(e.date)+'"><b>'+new Date(e.date+"T00:00:00").getDate()+'</b><span>'+new Date(e.date+"T00:00:00").toLocaleDateString("en-IN",{month:"short"})+'</span></time><div><strong>'+escHtml(e.title)+'</strong><small>'+escHtml(e.section||"All Sections")+(e.venue?" · "+escHtml(e.venue):"")+'</small>'+(e.description?'<p>'+escHtml(e.description)+'</p>':"")+'</div></article>').join(""):'<div class="calendar-empty"><span>✦</span><b>'+(selectedDate?"No published event on this date":"No published events this month")+'</b><p>School and unit events approved for publication will appear here.</p></div>';
+  eventsRoot.innerHTML=shown.length?shown.map(e=>{
+   const attachment=safeHttpUrl(e.attachmentUrl),registration=safeHttpUrl(e.registrationUrl);
+   return '<article class="calendar-event-item"><time datetime="'+escHtml(e.date)+'"><b>'+new Date(e.date+"T00:00:00").getDate()+'</b><span>'+new Date(e.date+"T00:00:00").toLocaleDateString("en-IN",{month:"short"})+'</span></time><div><strong>'+escHtml(e.title)+'</strong><small>'+escHtml(e.section||"All Sections")+(e.time?" · "+escHtml(e.time):"")+(e.venue?" · "+escHtml(e.venue):"")+(e.organiser?" · Organiser: "+escHtml(e.organiser):"")+'</small>'+(e.description?'<p>'+escHtml(e.description)+'</p>':"")+(attachment?'<a class="calendar-detail-link" href="'+attachment+'" target="_blank" rel="noopener noreferrer">Programme attachment ↗</a>':"")+(registration?'<a class="calendar-detail-link" href="'+registration+'" target="_blank" rel="noopener noreferrer">Registration ↗</a>':"")+'</div></article>';
+  }).join(""):'<div class="calendar-empty"><span>✦</span><b>'+(selectedDate?"No published event on this date":"No published events this month")+'</b><p>School and unit events approved for publication will appear here.</p></div>';
  };
  document.getElementById("calendarPrev")?.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);selectedDate="";render();});
  document.getElementById("calendarNext")?.addEventListener("click",()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);selectedDate="";render();});
- window.addEventListener("storage",e=>{if(e.key===storeKey)render();});
+ window.addEventListener("storage",e=>{if(e.key===storeKey){render();initUpcomingProgrammes();}});
  render();
 }
-
 function initTemporaryMenuLinks(){
  const link=document.getElementById("scoutGuideWeekTemporaryLink");
  if(!link)return;
