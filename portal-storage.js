@@ -2,7 +2,7 @@
    Files remain on this browser/device until a shared cloud backend is connected. */
 (function (global) {
   const DB_NAME = "kvs_oyms_preview_files_v2";
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   const CIRCULARS = "circulars";
   const GALLERY = "gallery";
   const SLIDES = "slides";
