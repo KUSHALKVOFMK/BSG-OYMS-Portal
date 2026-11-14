@@ -179,6 +179,7 @@ async function manageCirculars(){
  await renderCircularTable();
 }
 async function storeCircular(status){
+ if(!isSuper){alert("Only the Super Administrator can create or publish circulars.");return;}
  const title=document.getElementById("cTitle").value.trim();if(!title){alert("Please enter a circular title.");return;}
  const file=document.getElementById("cPdf").files[0];if(file&&file.type!=="application/pdf"){alert("Please choose a PDF file.");return;}
  try{
@@ -200,6 +201,7 @@ async function renderCircularTable(){
  root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>b.dataset.action==="view"?viewCircularDetail(b.dataset.id,true):changeCircular(b.dataset.id,b.dataset.action)));
 }
 async function changeCircular(id,action){
+ if(!isSuper){alert("Only the Super Administrator can change circulars.");return;}
  const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
  if(action==="archive"){x.archived=true;x.status="Archived";}
  if(action==="publish"){x.status="Published";x.publishedAt=new Date().toISOString();}
@@ -210,22 +212,22 @@ async function changeCircular(id,action){
 async function manageGallery(){
  await PortalStorage.init();
  const info=await PortalStorage.estimate();
- main.innerHTML='<h1>Photo Gallery</h1><p>Upload school-approved Scout and Guide activity photographs.</p><div class="dash-alert"><b>Expanded browser storage:</b> Photos are stored in IndexedDB, not localStorage. Browser/device quota applies. This preview does not sync photos to other devices. Upload only school-approved photographs and avoid private student information.</div><div id="galleryQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="galleryForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; browser quota applies)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Submit Photo for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
+ main.innerHTML='<h1>Photo Gallery</h1><p>Upload school-approved Scout and Guide activity photographs.</p><div class="dash-alert"><b>Expanded browser storage:</b> Photos are stored in IndexedDB, not localStorage. Browser/device quota applies. This preview does not sync photos to other devices. Upload only school-approved photographs and avoid private student information.</div><div id="galleryQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="galleryForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph or Video (JPG, PNG, WebP, MP4 or WebM)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" required></div></div><p><button class="dash-primary" type="submit">Submit Media for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
  document.getElementById("galleryForm").addEventListener("submit",uploadGalleryPhoto);
  await renderGalleryTable();
 }
 async function uploadGalleryPhoto(event){
  event.preventDefault();
  const file=document.getElementById("galleryImage").files[0];if(!file)return;
- if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Please choose a JPG, PNG or WebP image.");return;}
+ if(!["image/jpeg","image/png","image/webp","video/mp4","video/webm"].includes(file.type)){alert("Please choose a JPG, PNG, WebP, MP4 or WebM file.");return;}
  try{
   await PortalStorage.requestPersistentStorage();
   const list=await PortalStorage.allPhotos();
-  await PortalStorage.savePhoto({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageBlob:file,status:isSuper?"Published":"Pending",uploadedBy:actor,uploadedRole:role,createdAt:new Date().toISOString(),verifiedBy:isSuper?actor:"",archived:false});
-  logAction("Uploaded gallery photo",document.getElementById("galleryTitle").value.trim());
+  await PortalStorage.savePhoto({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageBlob:file,mediaBlob:file,mediaType:file.type,status:isSuper?"Published":"Pending",uploadedBy:actor,uploadedRole:role,createdAt:new Date().toISOString(),verifiedBy:isSuper?actor:"",archived:false});
+  logAction("Uploaded gallery media",document.getElementById("galleryTitle").value.trim());
   document.getElementById("galleryForm").reset();await renderGalleryTable();
   const info=await PortalStorage.estimate();document.getElementById("galleryQuota").textContent="Storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
-  alert(isSuper?"Photo published in this browser preview. It is not yet visible to other devices.":"Photo submitted for verification.");
+  alert(isSuper?"Media published in this browser preview. It is not yet visible to other devices.":"Media submitted for verification.");
  }catch(error){alert("The browser could not store this photo. Check available device storage or choose a smaller image.");console.error(error);}
 }
 async function renderGalleryTable(){
@@ -233,7 +235,7 @@ async function renderGalleryTable(){
  const all=await PortalStorage.allPhotos();
  const list=all.filter(x=>isSuper||x.uploadedBy===actor||x.uploadedRole===role);
  if(!list.length){root.innerHTML='<div class="dash-empty">No photo uploads yet.</div>';return;}
- root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+URL.createObjectURL(x.imageBlob)+'" alt="'+esc(x.title)+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span>'+(x.status==="Pending"?"<p>Waiting for verification</p>":"")+'<button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
+ root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>{const blob=x.mediaBlob||x.imageBlob,src=URL.createObjectURL(blob),isVideo=(x.mediaType||"").startsWith("video/");return '<article class="gallery-admin-card">'+(isVideo?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title)+'">')+'<div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span>'+(x.status==="Pending"?"<p>Waiting for verification</p>":"")+'<button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>';}).join("")+'</div>';
  root.querySelectorAll("[data-remove]").forEach(button=>button.addEventListener("click",async()=>{if(!confirm("Remove this photo from the preview gallery?"))return;await PortalStorage.removePhoto(button.dataset.remove);logAction("Removed gallery photo",button.dataset.remove);await renderGalleryTable();}));
 }
 async function reviewGallery(){
@@ -243,11 +245,12 @@ async function reviewGallery(){
  main.innerHTML='<h1>Verify Photo Uploads</h1><p>Review submitted photographs before publication.</p><div class="dash-alert">Check that every photograph is school-approved and suitable for public display.</div><div id="pendingGallery"></div>';
  const root=document.getElementById("pendingGallery");
  if(!pending.length){root.innerHTML='<div class="dash-empty">There are no photographs waiting for verification.</div>';return;}
- root.innerHTML='<div class="gallery-admin-grid">'+pending.map(x=>'<article class="gallery-admin-card"><img src="'+URL.createObjectURL(x.imageBlob)+'" alt="'+esc(x.title)+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><small>Submitted by: '+esc(x.uploadedBy||x.uploadedRole||"Portal user")+'</small><p><button class="dash-primary" data-approve="'+esc(x.id)+'">Approve &amp; Publish</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button></p></div></article>').join("")+'</div>';
+ root.innerHTML='<div class="gallery-admin-grid">'+pending.map(x=>{const blob=x.mediaBlob||x.imageBlob,src=URL.createObjectURL(blob),isVideo=(x.mediaType||"").startsWith("video/");return '<article class="gallery-admin-card">'+(isVideo?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title)+'">')+'<div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><small>Submitted by: '+esc(x.uploadedBy||x.uploadedRole||"Portal user")+'</small><p><button class="dash-primary" data-approve="'+esc(x.id)+'">Approve &amp; Publish</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button></p></div></article>';}).join("")+'</div>';
  root.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.approve,true)));
  root.querySelectorAll("[data-reject]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.reject,false)));
 }
 async function verifyGalleryPhoto(id,approved){
+ if(!canReview){overview();return;}
  const list=await PortalStorage.allPhotos();const photo=list.find(x=>x.id===id);if(!photo)return;
  photo.status=approved?"Published":"Rejected";photo.verifiedBy=actor;photo.verifiedAt=new Date().toISOString();
  await PortalStorage.savePhoto(photo);logAction(approved?"Approved photo":"Rejected photo",photo.title);await reviewGallery();
