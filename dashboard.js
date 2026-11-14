@@ -1,6 +1,11 @@
 const SESSION_KEY="kvs_oyms_demo_session";
-const CIRCULARS_KEY="kvs_oyms_demo_circulars_v1";
-const GALLERY_KEY="kvs_oyms_demo_gallery_v1";
+const ACCOUNTS_KEY="kvs_oyms_demo_accounts_v2";
+const APPROVALS_KEY="kvs_oyms_demo_admin_approvals_v1";
+const FREEZE_KEY="kvs_oyms_demo_freeze_requests_v1";
+const SECTIONS_KEY="kvs_oyms_demo_sections_v1";
+const SCHOOL_KEY="kvs_oyms_demo_school_profile_v1";
+const SETTINGS_KEY="kvs_oyms_demo_portal_settings_v1";
+const LOGS_KEY="kvs_oyms_demo_activity_logs_v1";
 let session=null;
 try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
 if(!session||!session.demo){window.location.replace("login.html");}
@@ -9,124 +14,258 @@ const isSuper=role==="Super Administrator";
 const canReview=role==="Administrator"||isSuper;
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
-document.getElementById("signedInAs").textContent=(session?.name||role)+" · Demo preview";
+const actor=session?.name||role;
+document.getElementById("signedInAs").textContent=actor+" · Demo preview";
 document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="login.html";});
-const items=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"]];
-if(isSuper)items.push(["manage","Manage Circulars"]);
-items.push(["gallery","Photo Gallery"]);
-if(canReview)items.push(["reviewGallery","Verify Photo Uploads"]);
-items.forEach(([id,label])=>{const b=document.createElement("button");b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function read(){try{return JSON.parse(localStorage.getItem(CIRCULARS_KEY)||"[]");}catch{return [];}}
-function save(list){localStorage.setItem(CIRCULARS_KEY,JSON.stringify(list));}
-function showView(view){
+function readLocal(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
+function writeLocal(key,value){localStorage.setItem(key,JSON.stringify(value));}
+function logAction(action,detail){const logs=readLocal(LOGS_KEY,[]);logs.unshift({id:"log-"+Date.now(),action,detail,by:actor,role,at:new Date().toISOString()});writeLocal(LOGS_KEY,logs.slice(0,500));}
+function defaultAccounts(){return [{id:"DEMO-SUPER-001",role:"Super Administrator",status:"Active",kind:"Demo preview"},{id:"DEMO-USER-001",role:"Selected non-super role",status:"Active",kind:"Shared role-preview account"}];}
+function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){a=defaultAccounts();writeLocal(ACCOUNTS_KEY,a);}return a;}
+function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
+function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
+function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
+const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["manage","Manage Circulars"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"]];
+const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
+const items=isSuper?superItems:memberItems.concat(canReview?[["reviewGallery","Verify Photo Uploads"]]:[]);
+items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+
+async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+ if(view==="school"&&isSuper)return schoolDetails();
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
  if(view==="manage"&&isSuper)return manageCirculars();
  if(view==="gallery")return manageGallery();
  if(view==="reviewGallery"&&canReview)return reviewGallery();
+ if(view==="approvals"&&isSuper)return adminApprovals();
+ if(view==="loginIds"&&isSuper)return loginIds();
+ if(view==="sections"&&isSuper)return manageSections();
+ if(view==="patrols"&&isSuper)return patrolRegistry();
+ if(view==="progression"&&isSuper)return progressionAppreciation();
+ if(view==="events"&&isSuper)return eventManagement();
+ if(view==="reports"&&isSuper)return reports();
+ if(view==="logs"&&isSuper)return activityLogs();
+ if(view==="accounts"&&isSuper)return accountControls();
+ if(view==="settings"&&isSuper)return portalSettings();
+ if(view==="freeze"&&isSuper)return freezeRequests();
+ if(view==="demo"&&isSuper)return demoAccounts();
  overview();
 }
-function overview(){
- const list=read();const published=list.filter(x=>x.status==="Published"&&!x.archived).length;
- main.innerHTML="<h1>"+esc(role)+" Dashboard</h1><p>Welcome to the KVS-OYMS 2.0 role-based preview.</p><div class=\"dash-alert\"><b>Preview mode:</b> This dashboard is not connected to a live database. Demo circulars are saved only in this browser and are not emailed or pushed to other users.</div><div class=\"dash-stat-grid\"><div class=\"dash-stat\"><strong>"+list.length+"</strong><span>Demo circular records</span></div><div class=\"dash-stat\"><strong>"+published+"</strong><span>Published in this browser</span></div><div class=\"dash-stat\"><strong>"+(isSuper?"Full preview":"Read only")+"</strong><span>Current access level</span></div></div><h2>Quick access</h2><p>"+(isSuper?"Use Manage Circulars to prepare and publish a circular in this local preview.":"Open Circulars to read notices made available in this browser preview.")+"</p>"+(isSuper?'<button class="dash-primary" id="goManage">Create / Manage Circulars</button>':"");
- const go=document.getElementById("goManage");if(go)go.addEventListener("click",()=>showView("manage"));
+
+function schoolDetails(){
+ const p=readLocal(SCHOOL_KEY,{school:"PM SHRI Kendriya Vidyalaya Ordnance Factory Medak",unit:"Alluri",kvCode:"1525",region:"Hyderabad",district:"Sangareddy",pin:"502205",name:session?.name||"",designation:"Super Administrator",email:"",mobile:""});
+ main.innerHTML='<h1>School &amp; Personal Details</h1><p>Review the school identity and the Super Administrator profile used in this local preview.</p><form id="schoolForm" class="dash-panel"><h2>School Details</h2><div class="dash-form-grid">'+
+ '<div class="dash-field full"><label for="schoolName">School Name</label><input id="schoolName" value="'+esc(p.school)+'" required></div>'+
+ '<div class="dash-field"><label for="unitName">BSG Unit Name</label><input id="unitName" value="'+esc(p.unit)+'"></div>'+
+ '<div class="dash-field"><label for="kvCode">KV Code</label><input id="kvCode" value="'+esc(p.kvCode)+'"></div>'+
+ '<div class="dash-field"><label for="region">KVS Region</label><input id="region" value="'+esc(p.region)+'"></div>'+
+ '<div class="dash-field"><label for="district">District</label><input id="district" value="'+esc(p.district)+'"></div>'+
+ '<div class="dash-field"><label for="pin">PIN Code</label><input id="pin" value="'+esc(p.pin)+'"></div>'+
+ '</div><h2>Personal Details</h2><div class="dash-form-grid">'+
+ '<div class="dash-field"><label for="personalName">Display Name</label><input id="personalName" value="'+esc(p.name)+'"></div>'+
+ '<div class="dash-field"><label for="designation">Designation</label><input id="designation" value="'+esc(p.designation)+'"></div>'+
+ '<div class="dash-field"><label for="personalEmail">Email (optional)</label><input id="personalEmail" type="email" value="'+esc(p.email)+'"></div>'+
+ '<div class="dash-field"><label for="personalMobile">Mobile (optional)</label><input id="personalMobile" value="'+esc(p.mobile)+'"></div>'+
+ '</div><div class="dash-alert">Preview only: these details are saved in this browser. Shared profile records and secure account editing require the database phase.</div><button class="dash-primary" type="submit">Save School &amp; Personal Details</button></form>';
+ document.getElementById("schoolForm").addEventListener("submit",e=>{e.preventDefault();const v={school:document.getElementById("schoolName").value.trim(),unit:document.getElementById("unitName").value.trim(),kvCode:document.getElementById("kvCode").value.trim(),region:document.getElementById("region").value.trim(),district:document.getElementById("district").value.trim(),pin:document.getElementById("pin").value.trim(),name:document.getElementById("personalName").value.trim(),designation:document.getElementById("designation").value.trim(),email:document.getElementById("personalEmail").value.trim(),mobile:document.getElementById("personalMobile").value.trim()};writeLocal(SCHOOL_KEY,v);logAction("Updated school profile","School and personal details updated in this browser.");alert("Saved in this browser preview.");});
 }
+
+async function overview(){
+ let circulars=[],photos=[];try{await PortalStorage.init();circulars=await PortalStorage.allCirculars();photos=await PortalStorage.allPhotos();}catch(error){}
+ const published=circulars.filter(x=>x.status==="Published"&&!x.archived).length;
+ const visiblePhotos=photos.filter(x=>x.status==="Published"&&!x.archived).length;
+ const pendingAdmins=getApprovals().filter(x=>x.status==="Pending").length;
+ const pendingFreeze=getFreezeRequests().filter(x=>x.status==="Pending").length;
+ const accounts=getAccounts().length;
+ main.innerHTML='<h1>'+(isSuper?"Super Administrator Dashboard":esc(role)+" Dashboard")+'</h1><p>Welcome to the KVS-OYMS 2.0 role-based preview.</p><div class="dash-alert"><b>Preview mode:</b> Changes are stored in this browser only. This is not secure live authentication and does not synchronise between devices.</div>'+
+ '<div class="dash-stat-grid"><div class="dash-stat"><strong>'+accounts+'</strong><span>Demo Login ID records</span></div><div class="dash-stat"><strong>'+published+'</strong><span>Published circulars</span></div><div class="dash-stat"><strong>'+visiblePhotos+'</strong><span>Published gallery photos</span></div><div class="dash-stat"><strong>'+pendingAdmins+'</strong><span>Pending admin approvals</span></div><div class="dash-stat"><strong>'+pendingFreeze+'</strong><span>Pending freeze requests</span></div></div>'+
+ (isSuper?'<h2>Super Administrator Controls</h2><div class="dash-quick-grid">'+superItems.filter(x=>x[0]!=="overview").map(x=>'<button class="dash-quick" data-go="'+x[0]+'">'+esc(x[1])+' <span>Open section →</span></button>').join("")+'</div>':'<h2>Quick access</h2><p>Open Circulars to read notices and Photo Gallery to view or submit school-approved activity photographs.</p>');
+ main.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.go)));
+}
+
 function profile(){
  main.innerHTML="<h1>My Profile</h1><p>Signed in as "+esc(session?.name)+".</p><div class=\"dash-form-grid\"><div class=\"dash-field\"><label>Role</label><input value=\""+esc(role)+"\" disabled></div><div class=\"dash-field\"><label>Preview Login ID</label><input value=\""+esc(session?.loginId)+"\" disabled></div><div class=\"dash-field full\"><label>School</label><input value=\"PM SHRI Kendriya Vidyalaya Ordnance Factory Medak\" disabled></div></div><div class=\"dash-alert\">Profile editing and account settings will be enabled after secure authentication and database setup.</div>";
 }
-function circulars(){
- const list=read().filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||"").localeCompare(a.publishedAt||""));
- if(!list.length){main.innerHTML="<h1>Official Circulars</h1><div class=\"dash-empty\">No published circulars yet.</div>";return;}
- main.innerHTML="<h1>Official Circulars</h1><p>Published circulars available in this browser preview.</p>"+list.map(x=>'<article class="public-circular"><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number||"Circular")+'</b> · '+esc(x.date||"")+' · '+esc(x.audience||"All sections")+'</p><p>'+esc(x.summary||"")+'</p>'+(x.fileData?'<a href="'+x.fileData+'" target="_blank" rel="noopener">View PDF: '+esc(x.fileName)+'</a>':"")+'</article>').join("");
+
+async function circulars(){
+ await PortalStorage.init();
+ const info=await PortalStorage.estimate();
+ main.innerHTML='<h1>Official Circulars</h1><p>Published circulars available in this browser preview.</p><div id="storageInfo" class="dash-alert">Browser file storage: '+PortalStorage.formatBytes(info.usage)+' used of '+PortalStorage.formatBytes(info.quota)+' reported. Available: '+PortalStorage.formatBytes(info.available)+'.</div><div id="publicCirculars"></div>';
+ const list=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||"").localeCompare(a.publishedAt||""));
+ const root=document.getElementById("publicCirculars");
+ root.innerHTML=list.length?list.map(x=>'<article class="public-circular"><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number||"Circular")+'</b> · '+esc(x.date||"")+' · '+esc(x.audience||"All sections")+'</p><p>'+esc(x.summary||"")+'</p>'+(x.fileBlob?'<a href="'+URL.createObjectURL(x.fileBlob)+'" target="_blank" rel="noopener">View PDF: '+esc(x.fileName||"Circular PDF")+'</a>':"")+'</article>').join(""):'<div class="dash-empty">No published circulars yet.</div>';
 }
-function manageCirculars(){
+
+async function manageCirculars(){
  if(!isSuper){overview();return;}
- main.innerHTML="<h1>Manage Circulars</h1><p>Create a circular, attach a PDF and publish it to the public Circulars section in this preview.</p><div class=\"dash-alert\"><b>Local preview only:</b> Publishing here updates this browser's website view. It does not email users, send mobile notifications or synchronise other devices. Those features require the backend/database phase.</div><form id=\"circularForm\"><div class=\"dash-form-grid\">"+
+ await PortalStorage.init();
+ const info=await PortalStorage.estimate();
+ main.innerHTML='<h1>Manage Circulars</h1><p>Create, save, publish, unpublish or archive school circulars.</p><div class="dash-alert"><b>Expanded browser storage:</b> PDFs are now saved in IndexedDB instead of the old 1 MB localStorage limit. Browser/device quota applies; this is not yet shared cloud storage.</div><div id="circularQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="circularForm" class="dash-panel"><div class="dash-form-grid">'+
  '<div class="dash-field"><label for="cNumber">Circular Number</label><input id="cNumber" placeholder="e.g. BSG/2026/01"></div>'+
  '<div class="dash-field"><label for="cDate">Issue Date</label><input id="cDate" type="date" required></div>'+
  '<div class="dash-field full"><label for="cTitle">Circular Title / Subject</label><input id="cTitle" required placeholder="Enter circular subject"></div>'+
  '<div class="dash-field"><label for="cIssuer">Issued By</label><input id="cIssuer" value="Super Administrator" required></div>'+
  '<div class="dash-field"><label for="cAudience">Applicable To</label><select id="cAudience"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option><option>Unit Leaders</option><option>Patrol Leaders</option></select></div>'+
  '<div class="dash-field full"><label for="cSummary">Short Description</label><textarea id="cSummary" rows="4" placeholder="Add a short summary for the public notice list"></textarea></div>'+
- '<div class="dash-field full"><label for="cPdf">Attach Circular PDF (optional, max 1 MB in this preview)</label><input id="cPdf" type="file" accept="application/pdf,.pdf"></div>'+
+ '<div class="dash-field full"><label for="cPdf">Attach Circular PDF (browser quota applies)</label><input id="cPdf" type="file" accept="application/pdf,.pdf"></div>'+
  '</div><p><button class="dash-primary" type="submit">Save as Draft</button> <button class="dash-primary" type="button" id="publishNow">Publish Circular</button></p></form><h2>Saved Circulars</h2><div id="circularTable"></div>';
  document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
  document.getElementById("circularForm").addEventListener("submit",e=>{e.preventDefault();storeCircular("Draft");});
  document.getElementById("publishNow").addEventListener("click",()=>storeCircular("Published"));
- renderCircularTable();
+ await renderCircularTable();
 }
 async function storeCircular(status){
  const title=document.getElementById("cTitle").value.trim();if(!title){alert("Please enter a circular title.");return;}
- const file=document.getElementById("cPdf").files[0];if(file&&(file.type!=="application/pdf"||file.size>1024*1024)){alert("Please choose a PDF file no larger than 1 MB for this preview.");return;}
- let fileData="";
- if(file){fileData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});}
- const list=read();const now=new Date().toISOString();
- list.unshift({id:"circ-"+Date.now(),number:document.getElementById("cNumber").value.trim(),date:document.getElementById("cDate").value,title,issuer:document.getElementById("cIssuer").value.trim(),audience:document.getElementById("cAudience").value,summary:document.getElementById("cSummary").value.trim(),fileName:file?.name||"",fileData,status,createdAt:now,publishedAt:status==="Published"?now:""});
- try{save(list);}catch{alert("Browser storage is full. Try a smaller PDF.");return;}
- document.getElementById("circularForm").reset();document.getElementById("cIssuer").value="Super Administrator";document.getElementById("cDate").value=new Date().toISOString().slice(0,10);renderCircularTable();
- alert(status==="Published"?"Circular published in this browser preview. It has not been emailed or sent to other devices.":"Circular saved as a draft in this browser preview.");
+ const file=document.getElementById("cPdf").files[0];if(file&&file.type!=="application/pdf"){alert("Please choose a PDF file.");return;}
+ try{
+  await PortalStorage.requestPersistentStorage();
+  const now=new Date().toISOString();
+  await PortalStorage.saveCircular({id:"circ-"+Date.now(),number:document.getElementById("cNumber").value.trim(),date:document.getElementById("cDate").value,title,issuer:document.getElementById("cIssuer").value.trim(),audience:document.getElementById("cAudience").value,summary:document.getElementById("cSummary").value.trim(),fileName:file?.name||"",fileBlob:file||null,status,createdAt:now,publishedAt:status==="Published"?now:"",archived:false});
+  logAction(status+" circular",title);
+  document.getElementById("circularForm").reset();document.getElementById("cIssuer").value="Super Administrator";document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
+  await renderCircularTable();
+  const info=await PortalStorage.estimate();document.getElementById("circularQuota").textContent="Storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
+  alert(status==="Published"?"Circular published in this browser preview. It is not shared to other devices.":"Circular saved as a draft in this browser preview.");
+ }catch(error){alert("The browser could not store this file. Check available device storage or choose a smaller PDF.");console.error(error);}
 }
-function renderCircularTable(){
+async function renderCircularTable(){
  const root=document.getElementById("circularTable");if(!root)return;
- const list=read().filter(x=>!x.archived);
+ const list=(await PortalStorage.allCirculars()).filter(x=>!x.archived);
  if(!list.length){root.innerHTML='<div class="dash-empty">No circulars saved yet.</div>';return;}
- root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Number / Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.number||"—")+'</b><br>'+esc(x.title)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.audience)+'</td><td><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span></td><td>'+(x.status==="Published"?'<button class="dash-secondary" data-action="draft" data-id="'+esc(x.id)+'">Unpublish</button>':'<button class="dash-primary" data-action="publish" data-id="'+esc(x.id)+'">Publish</button>')+' <button class="dash-danger" data-action="archive" data-id="'+esc(x.id)+'">Archive</button></td></tr>').join("")+'</tbody></table></div>';
+ root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Number / Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.number||"—")+'</b><br>'+esc(x.title)+(x.fileName?'<br><small>'+esc(x.fileName)+'</small>':"")+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.audience)+'</td><td><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span></td><td>'+(x.status==="Published"?'<button class="dash-secondary" data-action="draft" data-id="'+esc(x.id)+'">Unpublish</button>':'<button class="dash-primary" data-action="publish" data-id="'+esc(x.id)+'">Publish</button>')+' <button class="dash-danger" data-action="archive" data-id="'+esc(x.id)+'">Archive</button></td></tr>').join("")+'</tbody></table></div>';
  root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>changeCircular(b.dataset.id,b.dataset.action)));
 }
-function changeCircular(id,action){
- const list=read();const x=list.find(item=>item.id===id);if(!x)return;
+async function changeCircular(id,action){
+ const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
  if(action==="archive"){x.archived=true;x.status="Archived";}
  if(action==="publish"){x.status="Published";x.publishedAt=new Date().toISOString();}
  if(action==="draft"){x.status="Draft";x.publishedAt="";}
- save(list);renderCircularTable();
+ await PortalStorage.saveCircular(x);logAction(action+" circular",x.title);await renderCircularTable();
 }
-showView("overview");
-function readGallery(){try{return JSON.parse(localStorage.getItem(GALLERY_KEY)||"[]");}catch{return [];}}
-function saveGallery(list){localStorage.setItem(GALLERY_KEY,JSON.stringify(list));}
-function manageGallery(){
- const directPublish=isSuper;
- main.innerHTML='<h1>Photo Gallery</h1><p>Upload a school-approved Scout or Guide activity photograph. '+(directPublish?'Your Super Administrator uploads can be published immediately.':'Your upload will remain pending until an Administrator or Super Administrator verifies it.')+'</p><div class="dash-alert"><b>Preview mode:</b> Photos are stored only in this browser for now. Shared cloud storage will be connected in the database phase. Upload only school-approved photos and avoid images showing private student information.</div><form id="galleryForm"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; max 400 KB)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Submit Photo for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
+
+async function manageGallery(){
+ await PortalStorage.init();
+ const info=await PortalStorage.estimate();
+ main.innerHTML='<h1>Photo Gallery</h1><p>Upload school-approved Scout and Guide activity photographs.</p><div class="dash-alert"><b>Expanded browser storage:</b> Photos are stored in IndexedDB, not localStorage. Browser/device quota applies. This preview does not sync photos to other devices. Upload only school-approved photographs and avoid private student information.</div><div id="galleryQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="galleryForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; browser quota applies)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Submit Photo for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
  document.getElementById("galleryForm").addEventListener("submit",uploadGalleryPhoto);
- renderGalleryTable();
+ await renderGalleryTable();
 }
 async function uploadGalleryPhoto(event){
  event.preventDefault();
- const file=document.getElementById("galleryImage").files[0];
- if(!file)return;
+ const file=document.getElementById("galleryImage").files[0];if(!file)return;
  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Please choose a JPG, PNG or WebP image.");return;}
- if(file.size>400*1024){alert("Please choose an image smaller than 400 KB for this preview.");return;}
- const imageData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
- const list=readGallery();
- list.unshift({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageData,status:isSuper?"Published":"Pending",uploadedBy:session?.name||role,uploadedRole:role,createdAt:new Date().toISOString(),verifiedBy:isSuper?(session?.name||"Super Administrator"):""});
- try{saveGallery(list);}catch{alert("Browser storage is full. Please use a smaller image or remove older preview photos.");return;}
- document.getElementById("galleryForm").reset();renderGalleryTable();
- alert(isSuper?"Photo published in this browser preview. It is not yet visible to other devices.":"Photo submitted for verification. It will appear in the public gallery only after an Administrator or Super Administrator approves it.");
+ try{
+  await PortalStorage.requestPersistentStorage();
+  const list=await PortalStorage.allPhotos();
+  await PortalStorage.savePhoto({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageBlob:file,status:isSuper?"Published":"Pending",uploadedBy:actor,uploadedRole:role,createdAt:new Date().toISOString(),verifiedBy:isSuper?actor:"",archived:false});
+  logAction("Uploaded gallery photo",document.getElementById("galleryTitle").value.trim());
+  document.getElementById("galleryForm").reset();await renderGalleryTable();
+  const info=await PortalStorage.estimate();document.getElementById("galleryQuota").textContent="Storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
+  alert(isSuper?"Photo published in this browser preview. It is not yet visible to other devices.":"Photo submitted for verification.");
+ }catch(error){alert("The browser could not store this photo. Check available device storage or choose a smaller image.");console.error(error);}
 }
-function renderGalleryTable(){
+async function renderGalleryTable(){
  const root=document.getElementById("galleryTable");if(!root)return;
- const list=readGallery().filter(x=>isSuper||x.uploadedBy===(session?.name||role)||x.uploadedRole===role);
+ const all=await PortalStorage.allPhotos();
+ const list=all.filter(x=>isSuper||x.uploadedBy===actor||x.uploadedRole===role);
  if(!list.length){root.innerHTML='<div class="dash-empty">No photo uploads yet.</div>';return;}
- root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span>'+(x.status==="Pending"?"<p>Waiting for verification</p>":"")+'<button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
- root.querySelectorAll("[data-remove]").forEach(button=>button.addEventListener("click",()=>{if(!confirm("Remove this photo from the preview gallery?"))return;saveGallery(readGallery().filter(x=>x.id!==button.dataset.remove));renderGalleryTable();}));
+ root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+URL.createObjectURL(x.imageBlob)+'" alt="'+esc(x.title)+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span>'+(x.status==="Pending"?"<p>Waiting for verification</p>":"")+'<button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
+ root.querySelectorAll("[data-remove]").forEach(button=>button.addEventListener("click",async()=>{if(!confirm("Remove this photo from the preview gallery?"))return;await PortalStorage.removePhoto(button.dataset.remove);logAction("Removed gallery photo",button.dataset.remove);await renderGalleryTable();}));
 }
-
-function reviewGallery(){
+async function reviewGallery(){
  if(!canReview){overview();return;}
- const pending=readGallery().filter(x=>x.status==="Pending");
- main.innerHTML='<h1>Verify Photo Uploads</h1><p>Review submitted photographs before they are displayed on the public homepage.</p><div class="dash-alert">Only approved photographs are shown in the public gallery. Check that each photo is suitable for the school website and has an appropriate caption.</div><div id="pendingGallery"></div>';
+ await PortalStorage.init();
+ const pending=(await PortalStorage.allPhotos()).filter(x=>x.status==="Pending");
+ main.innerHTML='<h1>Verify Photo Uploads</h1><p>Review submitted photographs before publication.</p><div class="dash-alert">Check that every photograph is school-approved and suitable for public display.</div><div id="pendingGallery"></div>';
  const root=document.getElementById("pendingGallery");
  if(!pending.length){root.innerHTML='<div class="dash-empty">There are no photographs waiting for verification.</div>';return;}
- root.innerHTML='<div class="gallery-admin-grid">'+pending.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><small>Submitted by: '+esc(x.uploadedBy||x.uploadedRole||"Portal user")+'</small><p><button class="dash-primary" data-approve="'+esc(x.id)+'">Approve &amp; Publish</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button></p></div></article>').join("")+'</div>';
+ root.innerHTML='<div class="gallery-admin-grid">'+pending.map(x=>'<article class="gallery-admin-card"><img src="'+URL.createObjectURL(x.imageBlob)+'" alt="'+esc(x.title)+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><small>Submitted by: '+esc(x.uploadedBy||x.uploadedRole||"Portal user")+'</small><p><button class="dash-primary" data-approve="'+esc(x.id)+'">Approve &amp; Publish</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button></p></div></article>').join("")+'</div>';
  root.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.approve,true)));
  root.querySelectorAll("[data-reject]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.reject,false)));
 }
-function verifyGalleryPhoto(id,approved){
- const list=readGallery();const photo=list.find(x=>x.id===id);if(!photo)return;
- photo.status=approved?"Published":"Rejected";
- photo.verifiedBy=session?.name||role;
- photo.verifiedAt=new Date().toISOString();
- saveGallery(list);
- reviewGallery();
+async function verifyGalleryPhoto(id,approved){
+ const list=await PortalStorage.allPhotos();const photo=list.find(x=>x.id===id);if(!photo)return;
+ photo.status=approved?"Published":"Rejected";photo.verifiedBy=actor;photo.verifiedAt=new Date().toISOString();
+ await PortalStorage.savePhoto(photo);logAction(approved?"Approved photo":"Rejected photo",photo.title);await reviewGallery();
 }
+
+function adminApprovals(){
+ const list=getApprovals();
+ main.innerHTML='<h1>Administrator Approval</h1><p>Review administrator access requests. Approve or suspend preview records.</p><div class="dash-alert">These are local preview records only. Live invitations, identity verification and secure account activation require backend authentication.</div><form id="approvalForm" class="dash-panel"><h2>Add a Preview Approval Request</h2><div class="dash-form-grid"><div class="dash-field"><label for="adminName">Applicant Name</label><input id="adminName" required></div><div class="dash-field"><label for="adminLogin">Requested Login ID</label><input id="adminLogin" placeholder="e.g. DEMO-ADMIN-02" required></div></div><button class="dash-primary" type="submit">Add Pending Request</button></form><h2>Administrator Requests</h2><div id="approvalTable"></div>';
+ document.getElementById("approvalForm").addEventListener("submit",e=>{e.preventDefault();const rows=getApprovals();rows.unshift({id:"adm-"+Date.now(),name:document.getElementById("adminName").value.trim(),loginId:document.getElementById("adminLogin").value.trim(),role:"Administrator",status:"Pending",createdAt:new Date().toISOString()});writeLocal(APPROVALS_KEY,rows);logAction("Created admin approval request",rows[0].loginId);adminApprovals();});
+ const root=document.getElementById("approvalTable");
+ root.innerHTML=list.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Applicant</th><th>Login ID</th><th>Requested Role</th><th>Status</th><th>Decision</th></tr></thead><tbody>'+list.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.loginId)+'</td><td>'+esc(x.role)+'</td><td><span class="dash-tag '+(x.status==="Approved"?"published":"")+'">'+esc(x.status)+'</span></td><td>'+(x.status==="Pending"?'<button class="dash-primary" data-approve="'+esc(x.id)+'">Approve</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button>':x.status==="Approved"?'<button class="dash-danger" data-suspend="'+esc(x.id)+'">Suspend</button>':'<button class="dash-secondary" data-reactivate="'+esc(x.id)+'">Reactivate</button>')+'</td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No administrator requests yet. Add a preview request above to test approval.</div>';
+ root.querySelectorAll("[data-approve],[data-reject],[data-suspend],[data-reactivate]").forEach(b=>b.addEventListener("click",()=>{const rows=getApprovals(),x=rows.find(a=>a.id===b.dataset.approve||a.id===b.dataset.reject||a.id===b.dataset.suspend||a.id===b.dataset.reactivate);if(!x)return;x.status=b.dataset.approve?"Approved":b.dataset.reject?"Rejected":b.dataset.suspend?"Suspended":"Approved";x.reviewedBy=actor;x.reviewedAt=new Date().toISOString();writeLocal(APPROVALS_KEY,rows);logAction("Admin request "+x.status,x.loginId);adminApprovals();}));
+}
+
+function loginIds(){
+ const rows=getAccounts();
+ main.innerHTML='<h1>All Login IDs</h1><p>View the login identifiers included in this demonstration.</p><div class="dash-alert">Only preview IDs are listed. New real accounts and credential resets must be handled by secure authentication, not by public browser code.</div><div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Role</th><th>Account Type</th><th>Status</th><th>Credential Tools</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><b>'+esc(x.id)+'</b></td><td>'+esc(x.role)+'</td><td>'+esc(x.kind||"Preview")+'</td><td><span class="dash-tag '+(x.status==="Active"?"published":"")+'">'+esc(x.status)+'</span></td><td><button class="dash-secondary" data-reset-id="'+esc(x.id)+'" disabled>Reset Login ID</button> <button class="dash-secondary" data-reset-pass="'+esc(x.id)+'" disabled>Reset Password</button></td></tr>').join("")+'</tbody></table></div><p class="dash-muted">Reset controls are shown but disabled until secure backend and email verification are connected.</p>';
+}
+
+function manageSections(){
+ const groups=getSections();
+ main.innerHTML='<h1>Cubs, Bulbuls, Scouts &amp; Guides Management</h1><p>Organise the four BSG sections and create local preview groups, units, flocks, Sixes or patrols.</p><div class="dash-alert">Changes are saved in this browser preview only. Shared unit/member records will require the database phase.</div><div class="section-admin-grid">'+groups.map(g=>'<section class="dash-panel"><div class="section-admin-head"><h2>'+esc(g.name)+'</h2><button class="dash-secondary" data-rename="'+esc(g.id)+'">Rename</button></div><p>'+g.units.length+' group / unit / patrol records</p><form data-add="'+esc(g.id)+'" class="inline-add"><label for="unit-'+esc(g.id)+'">Add to '+esc(g.name)+'</label><input id="unit-'+esc(g.id)+'" name="unit" placeholder="Enter unit, flock, Six or patrol name" required><button class="dash-primary" type="submit">Add</button></form><ul class="unit-list">'+(g.units.length?g.units.map(u=>'<li><span>'+esc(u.name)+'</span><button class="dash-danger" data-remove-unit="'+esc(g.id)+'|'+esc(u.id)+'">Remove</button></li>').join(""):'<li class="dash-muted">No groups added yet.</li>')+'</ul></section>').join("")+'</div>';
+ main.querySelectorAll("form[data-add]").forEach(f=>f.addEventListener("submit",e=>{e.preventDefault();const rows=getSections(),g=rows.find(x=>x.id===f.dataset.add);if(!g)return;g.units.push({id:"unit-"+Date.now(),name:f.elements.unit.value.trim()});writeLocal(SECTIONS_KEY,rows);logAction("Added BSG group",g.name+" · "+f.elements.unit.value.trim());manageSections();}));
+ main.querySelectorAll("[data-rename]").forEach(b=>b.addEventListener("click",()=>{const rows=getSections(),g=rows.find(x=>x.id===b.dataset.rename);const name=prompt("Enter the section display name:",g?.name||"");if(!g||!name?.trim())return;g.name=name.trim();writeLocal(SECTIONS_KEY,rows);logAction("Renamed BSG section",g.name);manageSections();}));
+ main.querySelectorAll("[data-remove-unit]").forEach(b=>b.addEventListener("click",()=>{const [gid,uid]=b.dataset.removeUnit.split("|"),rows=getSections(),g=rows.find(x=>x.id===gid);if(!g)return;g.units=g.units.filter(u=>u.id!==uid);writeLocal(SECTIONS_KEY,rows);logAction("Removed BSG group",gid);manageSections();}));
+}
+
+async function reports(){
+ await PortalStorage.init();
+ const circ=await PortalStorage.allCirculars(),photos=await PortalStorage.allPhotos(),groups=getSections(),admins=getApprovals(),freezes=getFreezeRequests(),accounts=getAccounts();
+ const stats=[["Login ID records",accounts.length],["Sections",groups.length],["Groups / units / patrols",groups.reduce((n,g)=>n+g.units.length,0)],["Circulars",circ.length],["Published circulars",circ.filter(x=>x.status==="Published"&&!x.archived).length],["Gallery uploads",photos.length],["Published photos",photos.filter(x=>x.status==="Published"&&!x.archived).length],["Admin requests pending",admins.filter(x=>x.status==="Pending").length],["Freeze requests pending",freezes.filter(x=>x.status==="Pending").length]];
+ main.innerHTML='<h1>Reports &amp; Analytics</h1><p>Summary of this browser preview data.</p><div class="dash-stat-grid">'+stats.map(x=>'<div class="dash-stat"><strong>'+x[1]+'</strong><span>'+esc(x[0])+'</span></div>').join("")+'</div><div class="dash-alert">These figures include only records saved in this browser. They are not school-wide reports.</div>';
+}
+function activityLogs(){
+ const logs=readLocal(LOGS_KEY,[]);
+ main.innerHTML='<h1>Activity Logs</h1><p>Recent actions performed in this browser preview.</p><div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Time</th><th>Action</th><th>Details</th><th>Actor</th></tr></thead><tbody>'+(logs.length?logs.map(x=>'<tr><td>'+esc(new Date(x.at).toLocaleString())+'</td><td>'+esc(x.action)+'</td><td>'+esc(x.detail)+'</td><td>'+esc(x.by)+'<br><small>'+esc(x.role)+'</small></td></tr>').join(""):'<tr><td colspan="4">No activity recorded yet.</td></tr>')+'</tbody></table></div>';
+}
+function accountControls(){
+ const rows=getAccounts();
+ main.innerHTML='<h1>Account Controls</h1><p>Control demo preview account status.</p><div class="dash-alert">These controls affect only the local preview records. The primary Super Administrator preview account cannot be frozen here. Real account suspension and password resets require secure server-side permissions.</div><div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Role</th><th>Status</th><th>Action</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.id)+'</td><td>'+esc(x.role)+'</td><td><span class="dash-tag '+(x.status==="Active"?"published":"")+'">'+esc(x.status)+'</span></td><td>'+(x.id==="DEMO-SUPER-001"?"Protected preview account":'<button class="'+(x.status==="Active"?"dash-danger":"dash-primary")+'" data-toggle-account="'+esc(x.id)+'">'+(x.status==="Active"?"Freeze":"Unfreeze")+'</button>')+'</td></tr>').join("")+'</tbody></table></div>';
+ main.querySelectorAll("[data-toggle-account]").forEach(b=>b.addEventListener("click",()=>{const a=getAccounts(),x=a.find(y=>y.id===b.dataset.toggleAccount);if(!x)return;x.status=x.status==="Active"?"Frozen":"Active";writeLocal(ACCOUNTS_KEY,a);logAction(x.status+" demo account",x.id);accountControls();}));
+}
+function portalSettings(){
+ const s=readLocal(SETTINGS_KEY,{maintenance:false,showGallery:true,announcement:""});
+ main.innerHTML='<h1>Portal Settings</h1><p>Local preview display settings.</p><form id="settingsForm" class="dash-panel"><div class="dash-field full"><label for="announcement">Homepage announcement text</label><textarea id="announcement" rows="3">'+esc(s.announcement)+'</textarea></div><label class="setting-check"><input id="maintenance" type="checkbox" '+(s.maintenance?"checked":"")+'> Maintenance mode (preview flag only)</label><label class="setting-check"><input id="showGallery" type="checkbox" '+(s.showGallery?"checked":"")+'> Show gallery section (preview setting)</label><div class="dash-alert">These settings are stored locally and do not change the public homepage for other visitors.</div><button class="dash-primary" type="submit">Save Portal Settings</button></form>';
+ document.getElementById("settingsForm").addEventListener("submit",e=>{e.preventDefault();writeLocal(SETTINGS_KEY,{announcement:document.getElementById("announcement").value.trim(),maintenance:document.getElementById("maintenance").checked,showGallery:document.getElementById("showGallery").checked});logAction("Updated portal settings","Preview settings saved.");alert("Settings saved in this browser preview.");});
+}
+function freezeRequests(){
+ const list=getFreezeRequests();
+ main.innerHTML='<h1>Freeze / Unfreeze Requests</h1><p>Every request requires a Super Administrator Yes / No decision.</p><div class="dash-alert">This is a preview approval workflow only. It does not change real user access.</div><form id="freezeForm" class="dash-panel"><h2>Create a Preview Request</h2><div class="dash-form-grid"><div class="dash-field"><label for="freezeLogin">Login ID</label><input id="freezeLogin" required placeholder="Enter preview Login ID"></div><div class="dash-field"><label for="freezeAction">Requested Action</label><select id="freezeAction"><option>Freeze</option><option>Unfreeze</option></select></div><div class="dash-field full"><label for="freezeReason">Reason</label><textarea id="freezeReason" rows="2" required></textarea></div></div><button class="dash-primary" type="submit">Submit Preview Request</button></form><h2>Requests Awaiting Decision</h2><div id="freezeTable"></div>';
+ document.getElementById("freezeForm").addEventListener("submit",e=>{e.preventDefault();const rows=getFreezeRequests();rows.unshift({id:"frz-"+Date.now(),loginId:document.getElementById("freezeLogin").value.trim(),action:document.getElementById("freezeAction").value,reason:document.getElementById("freezeReason").value.trim(),status:"Pending",requestedBy:actor,createdAt:new Date().toISOString()});writeLocal(FREEZE_KEY,rows);logAction("Submitted "+rows[0].action+" request",rows[0].loginId);freezeRequests();});
+ const root=document.getElementById("freezeTable");
+ root.innerHTML=list.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Action</th><th>Reason</th><th>Requested By</th><th>Status / Decision</th></tr></thead><tbody>'+list.map(x=>'<tr><td>'+esc(x.loginId)+'</td><td>'+esc(x.action)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.requestedBy)+'</td><td>'+esc(x.status)+(x.status==="Pending"?'<br><button class="dash-primary" data-yes="'+esc(x.id)+'">Yes, Approve</button> <button class="dash-danger" data-no="'+esc(x.id)+'">No, Reject</button>':"")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No freeze or unfreeze requests yet.</div>';
+ root.querySelectorAll("[data-yes],[data-no]").forEach(b=>b.addEventListener("click",()=>{const rows=getFreezeRequests(),x=rows.find(y=>y.id===b.dataset.yes||y.id===b.dataset.no);if(!x)return;x.status=b.dataset.yes?"Approved":"Rejected";x.decidedBy=actor;x.decidedAt=new Date().toISOString();writeLocal(FREEZE_KEY,rows);logAction(x.status+" "+x.action+" request",x.loginId);freezeRequests();}));
+}
+function demoAccounts(){
+ main.innerHTML='<h1>Demo Accounts</h1><p>Use these values only to explore the public preview.</p><div class="dash-panel"><h2>Super Administrator</h2><p><b>Login ID:</b> DEMO-SUPER-001</p><p><b>Password:</b> DEMO-ONLY</p><p><b>Role:</b> Super Administrator</p></div><div class="dash-panel"><h2>Other Role Preview</h2><p><b>Login ID:</b> DEMO-USER-001</p><p><b>Password:</b> DEMO-ONLY</p><p><b>Role:</b> Select any non-Super Administrator role on the login page.</p></div><div class="dash-alert">These are public demonstration credentials, not real accounts. Do not use real student information or passwords.</div>';
+}
+
+
+function patrolRegistry(){
+ const groups=getSections();
+ main.innerHTML='<h1>Patrol &amp; Member Registry</h1><p>View the Scouts and Guides patrol structure and the Cub/Bulbul group structure.</p><div class="section-admin-grid">'+groups.map(g=>'<section class="dash-panel"><h2>'+esc(g.name)+'</h2><p>'+g.units.length+' registered preview groups / units / patrols</p><ul class="unit-list">'+(g.units.length?g.units.map(u=>'<li>'+esc(u.name)+'</li>').join(""):'<li class="dash-muted">No units or patrols added yet.</li>')+'</ul><button class="dash-secondary" data-edit-section="'+esc(g.id)+'">Manage '+esc(g.name)+'</button></section>').join("")+'</div><div class="dash-alert"><b>Member registry:</b> Individual student names, dates of birth, contact details and BSG UIDs are intentionally not collected in this public browser preview. Add the secure, permission-controlled member registry after database setup.</div>';
+ main.querySelectorAll("[data-edit-section]").forEach(b=>b.addEventListener("click",()=>showView("sections")));
+}
+function progressionAppreciation(){
+ const key="kvs_oyms_demo_progression_v1",rows=readLocal(key,[]);
+ main.innerHTML='<h1>Progression &amp; Special Appreciation</h1><p>Record patrol-leader progression milestones and appreciation notes in this browser preview.</p><div class="dash-alert">Use demo Login IDs only. Do not enter student names or personal contact information here.</div><form id="progressionForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field"><label for="leaderLogin">Patrol Leader Login ID</label><input id="leaderLogin" required placeholder="Demo Login ID only"></div><div class="dash-field"><label for="leaderPatrol">Patrol / Unit</label><input id="leaderPatrol" required></div><div class="dash-field"><label for="progressLevel">Latest Progression</label><select id="progressLevel"><option>Pravesh</option><option>Pratham Sopan</option><option>Dwitiya Sopan</option><option>Tritiya Sopan</option><option>Rajya Puraskar</option><option>Rashtrapati Award</option></select></div><div class="dash-field"><label for="passDate">Date of Passing</label><input id="passDate" type="date" required></div><div class="dash-field full"><label for="appreciation">Special Appreciation (optional)</label><textarea id="appreciation" rows="3" placeholder="Short appreciation note"></textarea></div></div><button class="dash-primary" type="submit">Save Progression Record</button></form><h2>Saved Preview Records</h2><div id="progressionTable"></div>';
+ document.getElementById("progressionForm").addEventListener("submit",e=>{e.preventDefault();const list=readLocal(key,[]);list.unshift({id:"prog-"+Date.now(),loginId:document.getElementById("leaderLogin").value.trim(),patrol:document.getElementById("leaderPatrol").value.trim(),level:document.getElementById("progressLevel").value,date:document.getElementById("passDate").value,appreciation:document.getElementById("appreciation").value.trim(),createdAt:new Date().toISOString()});writeLocal(key,list);logAction("Saved progression record",list[0].loginId+" · "+list[0].level);progressionAppreciation();});
+ const root=document.getElementById("progressionTable");
+ root.innerHTML=rows.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Patrol</th><th>Progression</th><th>Date of Passing</th><th>Appreciation</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.loginId)+'</td><td>'+esc(x.patrol)+'</td><td>'+esc(x.level)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.appreciation||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No progression records have been entered.</div>';
+}
+function eventManagement(){
+ const key="kvs_oyms_demo_events_v1",rows=readLocal(key,[]);
+ main.innerHTML='<h1>Events &amp; Activities</h1><p>Create school BSG activity and event notices for the preview.</p><form id="eventForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field"><label for="eventTitle">Event / Activity Title</label><input id="eventTitle" required></div><div class="dash-field"><label for="eventDate">Date</label><input id="eventDate" type="date" required></div><div class="dash-field"><label for="eventSection">Section</label><select id="eventSection"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option></select></div><div class="dash-field"><label for="eventVenue">Venue</label><input id="eventVenue" placeholder="School / venue"></div><div class="dash-field full"><label for="eventDescription">Description</label><textarea id="eventDescription" rows="3"></textarea></div></div><button class="dash-primary" type="submit">Save Event Draft</button></form><h2>Saved Events</h2><div id="eventTable"></div>';
+ document.getElementById("eventForm").addEventListener("submit",e=>{e.preventDefault();const list=readLocal(key,[]);list.unshift({id:"evt-"+Date.now(),title:document.getElementById("eventTitle").value.trim(),date:document.getElementById("eventDate").value,section:document.getElementById("eventSection").value,venue:document.getElementById("eventVenue").value.trim(),description:document.getElementById("eventDescription").value.trim(),status:"Draft"});writeLocal(key,list);logAction("Created event draft",list[0].title);eventManagement();});
+ const root=document.getElementById("eventTable");
+ root.innerHTML=rows.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Event</th><th>Date</th><th>Section</th><th>Venue</th><th>Status</th><th>Action</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><b>'+esc(x.title)+'</b><br>'+esc(x.description)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.section)+'</td><td>'+esc(x.venue||"—")+'</td><td>'+esc(x.status)+'</td><td><button class="dash-primary" data-event-publish="'+esc(x.id)+'">'+(x.status==="Published"?"Unpublish":"Publish")+'</button> <button class="dash-danger" data-event-delete="'+esc(x.id)+'">Delete</button></td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No events have been added.</div>';
+ root.querySelectorAll("[data-event-publish],[data-event-delete]").forEach(b=>b.addEventListener("click",()=>{const list=readLocal(key,[]),x=list.find(y=>y.id===b.dataset.eventPublish||y.id===b.dataset.eventDelete);if(!x)return;if(b.dataset.eventDelete){writeLocal(key,list.filter(y=>y.id!==x.id));logAction("Deleted event",x.title);}else{x.status=x.status==="Published"?"Draft":"Published";writeLocal(key,list);logAction(x.status+" event",x.title);}eventManagement();}));
+}
+
+PortalStorage.init().then(()=>showView(isSuper?"school":"overview")).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView(isSuper?"school":"overview");});
