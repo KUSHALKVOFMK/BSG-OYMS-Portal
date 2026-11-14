@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
  await PortalStorage.init();
  renderPublicCirculars();
  renderPublicGallery();
- initHeroSlideshow();
+ await initHeroSlideshow();
 });
 async function renderPublicGallery(){
  const root=document.getElementById("publicGallery");if(!root)return;
@@ -28,17 +28,51 @@ async function renderPublicGallery(){
   root.innerHTML=items.map(x=>{const blob=x.mediaBlob||x.imageBlob,src=fileUrl(blob),isVideo=(x.mediaType||"").startsWith("video/");return '<figure class="gallery-card">'+(isVideo?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title||"School Scout and Guide activity")+'">')+'<figcaption><b>'+esc(x.title||"Activity media")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>';}).join("");
  }catch(error){root.innerHTML='<p class="muted">Gallery storage is not available in this browser.</p>';console.error(error);}
 }
-function initHeroSlideshow(){
- const slides=[...document.querySelectorAll(".hero-slide")];
- const dots=[...document.querySelectorAll(".slide-dots button")];
- if(slides.length<2)return;
+async function initHeroSlideshow(){
+ const track=document.querySelector(".slide-track");
+ const dotsRoot=document.querySelector(".slide-dots");
+ if(!track||!dotsRoot)return;
+ try{
+  await PortalStorage.init();
+  const uploaded=(await PortalStorage.allSlides()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
+  uploaded.forEach(item=>{
+   if(!(item.imageBlob instanceof Blob))return;
+   const slide=document.createElement("div");
+   slide.className="hero-slide admin-uploaded-slide";
+   const img=document.createElement("img");
+   img.className="slide-image";
+   img.src=URL.createObjectURL(item.imageBlob);
+   img.alt=item.altText||item.title||"School and Scouts and Guides slideshow image";
+   slide.appendChild(img);
+   if(item.title||item.caption){
+    const caption=document.createElement("div");
+    caption.className="admin-slide-caption";
+    if(item.title){const title=document.createElement("strong");title.textContent=item.title;caption.appendChild(title);}
+    if(item.caption){const desc=document.createElement("span");desc.textContent=item.caption;caption.appendChild(desc);}
+    slide.appendChild(caption);
+   }
+   track.appendChild(slide);
+  });
+ }catch(error){console.warn("Uploaded homepage slides could not be loaded in this browser.",error);}
+ const slides=[...track.querySelectorAll(".hero-slide")];
+ if(!slides.length)return;
  let current=0,timer;
+ dotsRoot.innerHTML="";
+ slides.forEach((slide,i)=>{
+  const dot=document.createElement("button");
+  dot.type="button";
+  dot.setAttribute("aria-label","Slide "+(i+1));
+  if(i===0)dot.classList.add("active");
+  dotsRoot.appendChild(dot);
+ });
+ const dots=[...dotsRoot.querySelectorAll("button")];
  const show=n=>{current=(n+slides.length)%slides.length;slides.forEach((slide,i)=>slide.classList.toggle("active",i===current));dots.forEach((dot,i)=>dot.classList.toggle("active",i===current));};
  const restart=()=>{clearInterval(timer);timer=window.setInterval(()=>show(current+1),7000);};
  document.querySelector(".slide-arrow.previous")?.addEventListener("click",()=>{show(current-1);restart();});
  document.querySelector(".slide-arrow.next")?.addEventListener("click",()=>{show(current+1);restart();});
  dots.forEach((dot,i)=>dot.addEventListener("click",()=>{show(i);restart();}));
- restart();
+ show(0);
+ if(slides.length>1)restart();
 }
 
 function initActivityCalendar(){
