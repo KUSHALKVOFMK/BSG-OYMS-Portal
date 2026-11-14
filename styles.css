@@ -245,3 +245,6 @@
  .dash-form-grid{grid-template-columns:1fr}
  .dash-field.full{grid-column:auto}
 }
+
+.slide-service{background-image:url("assets/scout-service.svg");background-size:cover;background-position:center;background-repeat:no-repeat}
+.hero-slide:last-child .slide-caption{display:grid}
