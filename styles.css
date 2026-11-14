@@ -248,3 +248,30 @@
 
 .slide-service{background-image:url("assets/scout-service.svg");background-size:cover;background-position:center;background-repeat:no-repeat}
 .hero-slide:last-child .slide-caption{display:grid}
+
+
+/* Clear image assets: standalone logos and three campaign slides */
+.sprite-emblem{background-image:none!important}
+.emblem-img{display:block!important;width:100%;height:100%;object-fit:contain;object-position:center;background:transparent}
+.sitehead .logo-stack{width:58px;height:58px;flex:0 0 58px}
+.sitehead .header-emblems .logo-stack{width:58px;height:58px;flex:0 0 58px}
+.auth-top .logo-stack{width:56px;height:56px;flex:0 0 56px}
+.dash-header .logo-stack{width:50px;height:50px;flex:0 0 50px}
+.school-badge-stack{display:block}
+.hero-slideshow{height:clamp(300px,31.25vw,500px);position:relative;overflow:hidden;background:#10275c}
+.slide-track,.hero-slide{position:absolute;inset:0}
+.hero-slide{opacity:0;visibility:hidden;transition:opacity .65s ease}
+.hero-slide.active{opacity:1;visibility:visible}
+.slide-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center}
+.slide-arrow{z-index:4}
+.slide-dots{z-index:4}
+@media(max-width:760px){
+ .sitehead .logo-stack,.sitehead .header-emblems .logo-stack{width:38px;height:38px;flex-basis:38px}
+ .sitehead .school-marks{gap:4px}
+ .auth-top .logo-stack{width:42px;height:42px;flex-basis:42px}
+ .dash-header .logo-stack{width:40px;height:40px;flex-basis:40px}
+}
+@media(max-width:650px){
+ .hero-slideshow{height:190px}
+ .slide-image{object-fit:contain;background:#10275c}
+}
