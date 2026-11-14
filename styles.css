@@ -145,3 +145,24 @@
 .slide-dots{position:absolute;z-index:2;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
 .slide-dots button{width:9px;height:9px;padding:0;border:1px solid #fff;border-radius:50%;background:#ffffff88;cursor:pointer}.slide-dots button.active{background:#fff;transform:scale(1.25)}
 @media(max-width:650px){.school-marks{gap:3px}.school-badge-stack{display:none}.hero-slideshow{height:230px}.slide-caption{left:14px;bottom:15px;max-width:78%;padding:10px 12px}.slide-caption span{font-size:8px}.slide-caption strong{font-size:15px}.slide-arrow{width:34px;height:34px;font-size:24px}.slide-arrow.previous{left:8px}.slide-arrow.next{right:8px}}
+
+
+/* Image clarity correction: use native sprite pixels, never stretch the sprite */
+.sprite-emblem{background-image:url("assets/site-sprite.webp");background-repeat:no-repeat}
+.kvs-emblem{background-size:1680px 360px;background-position:-177px -237px}
+.school-emblem{background-size:840px 180px;background-position:-282px -102px}
+.bsg-emblem{background-size:840px 180px;background-position:-702px -12px}
+.hero-slideshow{height:220px;background:#f7f5fa}
+.slide-photo{background-image:url("assets/site-sprite.webp");background-repeat:no-repeat;background-size:1680px 360px;background-color:transparent}
+.slide-janjatiya{background-position:calc(50% + 630px) 20px}
+.slide-swacchata{background-position:calc(50% + 210px) 20px}
+.slide-jota{background-position:calc(50% - 210px) 20px}
+.slide-bsg{background-position:calc(50% - 630px) 20px}
+.slide-caption{display:none}
+.slide-dots{bottom:4px}
+@media(max-width:650px){
+ .hero-slideshow{height:210px}
+ .slide-janjatiya,.slide-swacchata,.slide-jota,.slide-bsg{background-position-y:10px}
+ .slide-arrow{width:32px;height:32px;font-size:24px}
+ .slide-dots{bottom:3px}
+}
