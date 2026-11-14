@@ -6,12 +6,15 @@ try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
 if(!session||!session.demo){window.location.replace("login.html");}
 const role=session?.role||"Member";
 const isSuper=role==="Super Administrator";
+const canReview=role==="Administrator"||isSuper;
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 document.getElementById("signedInAs").textContent=(session?.name||role)+" · Demo preview";
 document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="login.html";});
 const items=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"]];
-if(isSuper){items.push(["manage","Manage Circulars"]);items.push(["gallery","Manage Gallery"]);}
+if(isSuper)items.push(["manage","Manage Circulars"]);
+items.push(["gallery","Photo Gallery"]);
+if(canReview)items.push(["reviewGallery","Verify Photo Uploads"]);
 items.forEach(([id,label])=>{const b=document.createElement("button");b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function read(){try{return JSON.parse(localStorage.getItem(CIRCULARS_KEY)||"[]");}catch{return [];}}
@@ -21,7 +24,8 @@ function showView(view){
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
  if(view==="manage"&&isSuper)return manageCirculars();
- if(view==="gallery"&&isSuper)return manageGallery();
+ if(view==="gallery")return manageGallery();
+ if(view==="reviewGallery"&&canReview)return reviewGallery();
  overview();
 }
 function overview(){
@@ -82,8 +86,8 @@ showView("overview");
 function readGallery(){try{return JSON.parse(localStorage.getItem(GALLERY_KEY)||"[]");}catch{return [];}}
 function saveGallery(list){localStorage.setItem(GALLERY_KEY,JSON.stringify(list));}
 function manageGallery(){
- if(!isSuper){overview();return;}
- main.innerHTML='<h1>Manage Gallery</h1><p>Upload school-approved Scout and Guide activity photographs. Publish them to the public homepage gallery.</p><div class="dash-alert"><b>Preview mode:</b> Photos are saved only in this browser. Other visitors and devices will not see them until cloud storage is connected. Upload only school-approved photos and avoid images showing private student information.</div><form id="galleryForm"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; max 400 KB)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Upload &amp; Publish Photo</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
+ const directPublish=isSuper;
+ main.innerHTML='<h1>Photo Gallery</h1><p>Upload a school-approved Scout or Guide activity photograph. '+(directPublish?'Your Super Administrator uploads can be published immediately.':'Your upload will remain pending until an Administrator or Super Administrator verifies it.')+'</p><div class="dash-alert"><b>Preview mode:</b> Photos are stored only in this browser for now. Shared cloud storage will be connected in the database phase. Upload only school-approved photos and avoid images showing private student information.</div><form id="galleryForm"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph (JPG, PNG or WebP; max 400 KB)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><p><button class="dash-primary" type="submit">Submit Photo for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
  document.getElementById("galleryForm").addEventListener("submit",uploadGalleryPhoto);
  renderGalleryTable();
 }
@@ -95,15 +99,34 @@ async function uploadGalleryPhoto(event){
  if(file.size>400*1024){alert("Please choose an image smaller than 400 KB for this preview.");return;}
  const imageData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});
  const list=readGallery();
- list.unshift({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageData,status:"Published",createdAt:new Date().toISOString()});
+ list.unshift({id:"photo-"+Date.now(),title:document.getElementById("galleryTitle").value.trim(),caption:document.getElementById("galleryCaption").value.trim(),fileName:file.name,imageData,status:isSuper?"Published":"Pending",uploadedBy:session?.name||role,uploadedRole:role,createdAt:new Date().toISOString(),verifiedBy:isSuper?(session?.name||"Super Administrator"):""});
  try{saveGallery(list);}catch{alert("Browser storage is full. Please use a smaller image or remove older preview photos.");return;}
  document.getElementById("galleryForm").reset();renderGalleryTable();
- alert("Photo added to this browser preview gallery. It is not yet visible to other devices.");
+ alert(isSuper?"Photo published in this browser preview. It is not yet visible to other devices.":"Photo submitted for verification. It will appear in the public gallery only after an Administrator or Super Administrator approves it.");
 }
 function renderGalleryTable(){
  const root=document.getElementById("galleryTable");if(!root)return;
- const list=readGallery();
- if(!list.length){root.innerHTML='<div class="dash-empty">No photos uploaded yet.</div>';return;}
- root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
+ const list=readGallery().filter(x=>isSuper||x.uploadedBy===(session?.name||role)||x.uploadedRole===role);
+ if(!list.length){root.innerHTML='<div class="dash-empty">No photo uploads yet.</div>';return;}
+ root.innerHTML='<div class="gallery-admin-grid">'+list.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span>'+(x.status==="Pending"?"<p>Waiting for verification</p>":"")+'<button class="dash-danger" data-remove="'+esc(x.id)+'">Remove</button></div></article>').join("")+'</div>';
  root.querySelectorAll("[data-remove]").forEach(button=>button.addEventListener("click",()=>{if(!confirm("Remove this photo from the preview gallery?"))return;saveGallery(readGallery().filter(x=>x.id!==button.dataset.remove));renderGalleryTable();}));
+}
+
+function reviewGallery(){
+ if(!canReview){overview();return;}
+ const pending=readGallery().filter(x=>x.status==="Pending");
+ main.innerHTML='<h1>Verify Photo Uploads</h1><p>Review submitted photographs before they are displayed on the public homepage.</p><div class="dash-alert">Only approved photographs are shown in the public gallery. Check that each photo is suitable for the school website and has an appropriate caption.</div><div id="pendingGallery"></div>';
+ const root=document.getElementById("pendingGallery");
+ if(!pending.length){root.innerHTML='<div class="dash-empty">There are no photographs waiting for verification.</div>';return;}
+ root.innerHTML='<div class="gallery-admin-grid">'+pending.map(x=>'<article class="gallery-admin-card"><img src="'+x.imageData+'" alt=""><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||x.fileName)+'</p><small>Submitted by: '+esc(x.uploadedBy||x.uploadedRole||"Portal user")+'</small><p><button class="dash-primary" data-approve="'+esc(x.id)+'">Approve &amp; Publish</button> <button class="dash-danger" data-reject="'+esc(x.id)+'">Reject</button></p></div></article>').join("")+'</div>';
+ root.querySelectorAll("[data-approve]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.approve,true)));
+ root.querySelectorAll("[data-reject]").forEach(b=>b.addEventListener("click",()=>verifyGalleryPhoto(b.dataset.reject,false)));
+}
+function verifyGalleryPhoto(id,approved){
+ const list=readGallery();const photo=list.find(x=>x.id===id);if(!photo)return;
+ photo.status=approved?"Published":"Rejected";
+ photo.verifiedBy=session?.name||role;
+ photo.verifiedAt=new Date().toISOString();
+ saveGallery(list);
+ reviewGallery();
 }
