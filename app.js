@@ -23,8 +23,8 @@ async function renderPublicGallery(){
  const root=document.getElementById("publicGallery");if(!root)return;
  try{
   const items=(await PortalStorage.allPhotos()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
-  if(!items.length){root.innerHTML='<p class="muted">No photographs have been published yet.</p>';return;}
-  root.innerHTML=items.map(x=>'<figure class="gallery-card"><img src="'+fileUrl(x.imageBlob)+'" alt="'+esc(x.title||"School Scout and Guide activity")+'"><figcaption><b>'+esc(x.title||"Activity photograph")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>').join("");
+  if(!items.length){root.innerHTML='<p class="muted">No photographs or videos have been published yet.</p>';return;}
+  root.innerHTML=items.map(x=>{const blob=x.mediaBlob||x.imageBlob,src=fileUrl(blob),isVideo=(x.mediaType||"").startsWith("video/");return '<figure class="gallery-card">'+(isVideo?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title||"School Scout and Guide activity")+'">')+'<figcaption><b>'+esc(x.title||"Activity media")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>';}).join("");
  }catch(error){root.innerHTML='<p class="muted">Gallery storage is not available in this browser.</p>';console.error(error);}
 }
 function initHeroSlideshow(){
