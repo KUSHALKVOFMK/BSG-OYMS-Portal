@@ -27,7 +27,7 @@ function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
-const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["manage","Manage Circulars"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"]];
+const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["circulars","Circulars"],["manage","Circular Management"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"]];
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const items=isSuper?superItems:memberItems.concat(canReview?[["reviewGallery","Verify Photo Uploads"]]:[]);
 items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
@@ -93,10 +93,36 @@ function profile(){
 async function circulars(){
  await PortalStorage.init();
  const info=await PortalStorage.estimate();
- main.innerHTML='<h1>Official Circulars</h1><p>Published circulars available in this browser preview.</p><div id="storageInfo" class="dash-alert">Browser file storage: '+PortalStorage.formatBytes(info.usage)+' used of '+PortalStorage.formatBytes(info.quota)+' reported. Available: '+PortalStorage.formatBytes(info.available)+'.</div><div id="publicCirculars"></div>';
- const list=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||"").localeCompare(a.publishedAt||""));
+ const list=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||b.date||"").localeCompare(a.publishedAt||a.date||""));
+ const audiences=[...new Set(list.map(x=>x.audience||"All Sections"))].sort();
+ main.innerHTML='<div class="circular-page-head"><div><span class="circular-eyebrow">INFORMATION CENTRE</span><h1>Official Circulars</h1><p>Browse published school and Scouts &amp; Guides notices. Select a circular to read its full details or open its PDF.</p></div><div class="circular-total"><strong>'+list.length+'</strong><span>Published circulars</span></div></div>'+
+ '<div class="circular-storage-note"><b>Browser storage:</b> '+PortalStorage.formatBytes(info.usage)+' used · '+PortalStorage.formatBytes(info.available)+' available on this device.</div>'+
+ '<div class="circular-toolbar"><label class="circular-search"><span>Search circulars</span><input id="circularSearch" type="search" placeholder="Search by title, number or keyword"></label><label class="circular-filter"><span>Audience</span><select id="circularAudience"><option value="">All sections</option>'+audiences.map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join("")+'</select></label><span class="circular-results" id="circularResults"></span></div>'+
+ '<div id="publicCirculars" class="circular-card-list"></div>';
  const root=document.getElementById("publicCirculars");
- root.innerHTML=list.length?list.map(x=>'<article class="public-circular"><h3>'+esc(x.title)+'</h3><p><b>'+esc(x.number||"Circular")+'</b> · '+esc(x.date||"")+' · '+esc(x.audience||"All sections")+'</p><p>'+esc(x.summary||"")+'</p>'+(x.fileBlob?'<a href="'+URL.createObjectURL(x.fileBlob)+'" target="_blank" rel="noopener">View PDF: '+esc(x.fileName||"Circular PDF")+'</a>':"")+'</article>').join(""):'<div class="dash-empty">No published circulars yet.</div>';
+ const search=document.getElementById("circularSearch");
+ const audience=document.getElementById("circularAudience");
+ const results=document.getElementById("circularResults");
+ const render=()=>{
+  const q=search.value.trim().toLowerCase(),selected=audience.value;
+  const filtered=list.filter(x=>{
+   const hay=[x.title,x.number,x.summary,x.issuer,x.audience].join(" ").toLowerCase();
+   return (!q||hay.includes(q))&&(!selected||(x.audience||"All Sections")===selected);
+  });
+  results.textContent=filtered.length+" of "+list.length+" circulars";
+  root.innerHTML=filtered.length?filtered.map(x=>'<article class="circular-card"><div class="circular-card-top"><span class="circular-number">'+esc(x.number||"OFFICIAL CIRCULAR")+'</span><span class="circular-status">PUBLISHED</span></div><h2>'+esc(x.title)+'</h2><div class="circular-meta"><span><b>Issued:</b> '+esc(x.date||"Date not specified")+'</span><span><b>For:</b> '+esc(x.audience||"All Sections")+'</span></div><p>'+esc(x.summary||"Open this circular to view its full details.")+'</p><div class="circular-card-bottom">'+(x.fileBlob?'<span class="circular-file">PDF attached · '+esc(x.fileName||"Circular PDF")+'</span>':'<span class="circular-file">Notice</span>')+'<button class="dash-primary" type="button" data-open-circular="'+esc(x.id)+'">Read Circular →</button></div></article>').join(""):'<div class="circular-empty"><strong>No matching circulars</strong><span>Try a different keyword or audience filter.</span></div>';
+  root.querySelectorAll("[data-open-circular]").forEach(b=>b.addEventListener("click",()=>viewCircularDetail(b.dataset.openCircular,false)));
+ };
+ search.addEventListener("input",render);audience.addEventListener("change",render);render();
+}
+
+async function viewCircularDetail(id,allowDraft=false){
+ await PortalStorage.init();
+ const item=(await PortalStorage.allCirculars()).find(x=>x.id===id&&!x.archived);
+ if(!item||(!allowDraft&&item.status!=="Published")){await circulars();return;}
+ const pdfUrl=item.fileBlob?URL.createObjectURL(item.fileBlob):"";
+ main.innerHTML='<div class="circular-detail-page"><button class="dash-secondary circular-back" id="backToCirculars" type="button">← Back to '+(allowDraft?'Circular Management':'Circulars')+'</button><article class="circular-detail"><div class="circular-detail-heading"><span class="circular-eyebrow">SCHOOL COMMUNICATION</span><span class="dash-tag '+(item.status==="Published"?'published':'')+'">'+esc(item.status||"Published")+'</span></div><h1>'+esc(item.title)+'</h1><div class="circular-detail-meta"><div><small>CIRCULAR NUMBER</small><strong>'+esc(item.number||"Not assigned")+'</strong></div><div><small>ISSUE DATE</small><strong>'+esc(item.date||"Not specified")+'</strong></div><div><small>APPLICABLE TO</small><strong>'+esc(item.audience||"All Sections")+'</strong></div><div><small>ISSUED BY</small><strong>'+esc(item.issuer||"School Administration")+'</strong></div></div><section class="circular-description"><h2>Notice / Description</h2><p>'+esc(item.summary||"No additional description was provided.")+'</p></section>'+(pdfUrl?'<section class="circular-document"><div class="circular-document-head"><div><h2>Attached Circular</h2><span>'+esc(item.fileName||"Circular PDF")+'</span></div><a class="dash-primary circular-download" href="'+pdfUrl+'" target="_blank" rel="noopener" download="'+esc(item.fileName||"circular.pdf")+'">Open / Download PDF</a></div><iframe title="Circular PDF preview" src="'+pdfUrl+'#toolbar=1&navpanes=0" loading="lazy"></iframe></section>':'<div class="circular-no-file">No PDF is attached to this circular. Please read the notice details above.</div>')+'</article></div>';
+ document.getElementById("backToCirculars").addEventListener("click",()=>allowDraft?manageCirculars():circulars());
 }
 
 async function manageCirculars(){
@@ -135,8 +161,8 @@ async function renderCircularTable(){
  const root=document.getElementById("circularTable");if(!root)return;
  const list=(await PortalStorage.allCirculars()).filter(x=>!x.archived);
  if(!list.length){root.innerHTML='<div class="dash-empty">No circulars saved yet.</div>';return;}
- root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Number / Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.number||"—")+'</b><br>'+esc(x.title)+(x.fileName?'<br><small>'+esc(x.fileName)+'</small>':"")+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.audience)+'</td><td><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span></td><td>'+(x.status==="Published"?'<button class="dash-secondary" data-action="draft" data-id="'+esc(x.id)+'">Unpublish</button>':'<button class="dash-primary" data-action="publish" data-id="'+esc(x.id)+'">Publish</button>')+' <button class="dash-danger" data-action="archive" data-id="'+esc(x.id)+'">Archive</button></td></tr>').join("")+'</tbody></table></div>';
- root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>changeCircular(b.dataset.id,b.dataset.action)));
+ root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Number / Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.number||"—")+'</b><br>'+esc(x.title)+(x.fileName?'<br><small>'+esc(x.fileName)+'</small>':"")+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.audience)+'</td><td><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span></td><td><button class="dash-secondary" data-action="view" data-id="'+esc(x.id)+'">Preview</button> '+(x.status==="Published"?'<button class="dash-secondary" data-action="draft" data-id="'+esc(x.id)+'">Unpublish</button>':'<button class="dash-primary" data-action="publish" data-id="'+esc(x.id)+'">Publish</button>')+' <button class="dash-danger" data-action="archive" data-id="'+esc(x.id)+'">Archive</button></td></tr>').join("")+'</tbody></table></div>';
+ root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>b.dataset.action==="view"?viewCircularDetail(b.dataset.id,true):changeCircular(b.dataset.id,b.dataset.action)));
 }
 async function changeCircular(id,action){
  const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
