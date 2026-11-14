@@ -348,32 +348,56 @@ async function orderedHomepageSlides(){
  if(changed)for(const x of slides)await PortalStorage.saveSlide(x);
  return slides.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
 }
+function setSlideUploadStatus(message,type){
+ const status=document.getElementById("slideUploadStatus");if(!status)return;
+ status.textContent=message;status.className="slide-upload-status "+(type||"");
+}
 async function manageSlideshow(){
  if(!isSuper){alert("Only the Super Administrator can manage homepage slides.");return;}
- await PortalStorage.init();
+ try{await PortalStorage.init();}catch(error){main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';return;}
  const info=await PortalStorage.estimate();
- main.innerHTML='<h1>Homepage Slideshow</h1><p>Upload and arrange additional campaign and school activity images for the public homepage slideshow.</p><div class="dash-alert"><b>Super Administrator only:</b> You can reorder slides, hide or show them, and set an optional display end date. Uploaded images remain in this browser/device until shared cloud storage is connected.</div><div id="slideStorageInfo" class="dash-storage-line">Browser storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="slideForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="slideTitle">Slide Title</label><input id="slideTitle" required maxlength="100" placeholder="e.g. World Scout Day Celebration"></div><div class="dash-field full"><label for="slideCaption">Short Caption (optional)</label><textarea id="slideCaption" rows="2" maxlength="180" placeholder="Add a short description for the slide"></textarea></div><div class="dash-field"><label for="slideEndDate">Display Until (optional)</label><input id="slideEndDate" type="date"><small class="field-help">The slide is hidden automatically after this date.</small></div><div class="dash-field full"><label for="slideImage">Choose Slideshow Image (JPG, PNG or WebP)</label><input id="slideImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><button class="dash-primary" type="submit">Upload Slide</button></form><h2>Uploaded Homepage Slides</h2><div id="homepageSlideList" class="slide-admin-grid"></div>';
+ main.innerHTML='<h1>Homepage Slideshow</h1><p>Upload and arrange campaign and school activity images for the public homepage.</p><div class="dash-alert"><b>Super Administrator only:</b> You can reorder slides, hide or show them, and set an optional display end date. Uploaded images are saved in this browser and are visible on the homepage when opened in the same browser on this device.</div><div id="slideStorageInfo" class="dash-storage-line">Browser storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="slideForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="slideTitle">Slide Title</label><input id="slideTitle" required maxlength="100" placeholder="e.g. World Scout Day Celebration"></div><div class="dash-field full"><label for="slideCaption">Short Caption (optional)</label><textarea id="slideCaption" rows="2" maxlength="180" placeholder="Add a short description for the slide"></textarea></div><div class="dash-field"><label for="slideEndDate">Display Until (optional)</label><input id="slideEndDate" type="date"><small class="field-help">The slide is hidden automatically after this date.</small></div><div class="dash-field full"><label for="slideImage">Choose Slideshow Image (JPG, PNG or WebP)</label><input id="slideImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required><small class="field-help">Choose a JPG, PNG or WebP image up to 15 MB.</small></div></div><div id="slideUploadStatus" class="slide-upload-status" role="status" aria-live="polite">Choose an image and select Upload Slide.</div><button class="dash-primary" id="slideUploadButton" type="submit">Upload Slide</button></form><h2>Uploaded Homepage Slides</h2><div id="homepageSlideList" class="slide-admin-grid"></div>';
  document.getElementById("slideForm").addEventListener("submit",uploadHomepageSlide);
  await renderHomepageSlides();
 }
 async function uploadHomepageSlide(event){
  event.preventDefault();
- if(!isSuper){alert("Only the Super Administrator can upload homepage slides.");return;}
- const file=document.getElementById("slideImage")?.files?.[0];if(!file)return;
- if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Please choose a JPG, PNG or WebP image.");return;}
- if(file.size>15*1024*1024){alert("Please choose an image smaller than 15 MB for this browser preview.");return;}
+ if(!isSuper){setSlideUploadStatus("Only the Super Administrator can upload homepage slides.","error");return;}
+ const form=document.getElementById("slideForm"),button=document.getElementById("slideUploadButton"),file=document.getElementById("slideImage")?.files?.[0];
+ if(!file){setSlideUploadStatus("Please choose an image file first.","error");return;}
+ const ext=(file.name.split(".").pop()||"").toLowerCase(),typeByExt={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"};
+ const mime=["image/jpeg","image/png","image/webp"].includes(file.type)?file.type:typeByExt[ext];
+ if(!mime){setSlideUploadStatus("Unsupported image format. Please choose a JPG, PNG or WebP image.","error");return;}
+ if(file.size>15*1024*1024){setSlideUploadStatus("This image is larger than 15 MB. Please choose a smaller image.","error");return;}
+ button.disabled=true;button.textContent="Uploading…";setSlideUploadStatus("Preparing image and saving it to this browser…","loading");
  try{
+  await PortalStorage.init();
+  const imageBlob=new Blob([await file.arrayBuffer()],{type:mime});
+  if(typeof createImageBitmap==="function"){
+   const bitmap=await createImageBitmap(imageBlob);
+   if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error("The selected image has no readable dimensions.");}
+   bitmap.close();
+  }
   await PortalStorage.requestPersistentStorage();
   const title=document.getElementById("slideTitle").value.trim();
+  if(!title)throw new Error("Please enter a title for this slide.");
   const existing=await orderedHomepageSlides(),nextOrder=existing.reduce((max,x)=>Math.max(max,Number(x.order)||0),0)+1;
-  const displayUntil=document.getElementById("slideEndDate").value;
-  await PortalStorage.saveSlide({id:"slide-"+Date.now(),title,caption:document.getElementById("slideCaption").value.trim(),altText:title,imageBlob:file,mediaType:file.type,status:"Published",uploadedBy:actor,createdAt:new Date().toISOString(),archived:false,order:nextOrder,displayUntil});
+  const id="slide-"+Date.now();
+  const record={id,title,caption:document.getElementById("slideCaption").value.trim(),altText:title,imageBlob,mediaType:mime,status:"Published",uploadedBy:actor,createdAt:new Date().toISOString(),archived:false,order:nextOrder,displayUntil:document.getElementById("slideEndDate").value};
+  await PortalStorage.saveSlide(record);
+  const saved=(await PortalStorage.allSlides()).find(x=>x.id===id);
+  if(!saved||!(saved.imageBlob instanceof Blob))throw new Error("The browser did not confirm that the image was saved. Check available browser storage and try again.");
   logAction("Uploaded homepage slide",title);
-  document.getElementById("slideForm").reset();await renderHomepageSlides();
+  form.reset();await renderHomepageSlides();
   const info=await PortalStorage.estimate();
   document.getElementById("slideStorageInfo").textContent="Browser storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
-  alert("Slide uploaded. It is published in this browser preview; refresh the homepage to view it.");
- }catch(error){alert("The browser could not store this image. Try a smaller image or check available device storage.");console.error(error);}
+  setSlideUploadStatus("✓ "+title+" was uploaded and saved. Refresh the homepage to see the new slide.","success");
+ }catch(error){
+  console.error("Homepage slideshow upload failed.",error);
+  setSlideUploadStatus("Upload failed: "+(error?.message||"The browser could not save this image.")+" Try a JPG, PNG or WebP file under 15 MB.","error");
+ }finally{
+  if(button){button.disabled=false;button.textContent="Upload Slide";}
+ }
 }
 async function renderHomepageSlides(){
  const root=document.getElementById("homepageSlideList");if(!root)return;
