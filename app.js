@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  renderPublicCirculars();
  renderPublicGallery();
+ initHeroSlideshow();
 });
 function renderPublicGallery(){
  const root=document.getElementById("publicGallery");if(!root)return;
@@ -19,4 +20,16 @@ function renderPublicGallery(){
  items=items.filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
  if(!items.length){root.innerHTML='<p class="muted">No photographs have been published yet.</p>';return;}
  root.innerHTML=items.map(x=>'<figure class="gallery-card"><img src="'+x.imageData+'" alt="'+esc(x.title||"School Scout and Guide activity")+'"><figcaption><b>'+esc(x.title||"Activity photograph")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>').join("");
+}
+
+function initHeroSlideshow(){
+ const slides=[...document.querySelectorAll(".hero-slide")];
+ const dots=[...document.querySelectorAll(".slide-dots button")];
+ if(slides.length<2)return;
+ let current=0;
+ const show=n=>{current=(n+slides.length)%slides.length;slides.forEach((slide,i)=>slide.classList.toggle("active",i===current));dots.forEach((dot,i)=>dot.classList.toggle("active",i===current));};
+ document.querySelector(".slide-arrow.previous")?.addEventListener("click",()=>show(current-1));
+ document.querySelector(".slide-arrow.next")?.addEventListener("click",()=>show(current+1));
+ dots.forEach((dot,i)=>dot.addEventListener("click",()=>show(i)));
+ window.setInterval(()=>show(current+1),7000);
 }
