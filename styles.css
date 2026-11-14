@@ -492,3 +492,19 @@
  .dash-header.school-masthead .portal-identity{grid-column:1 / 3;grid-row:2;justify-content:flex-start}
  .dash-header.school-masthead #logout{grid-column:3;grid-row:1;padding:7px 9px;font-size:11px}
 }
+
+
+/* Public BSG circulars and direct official archive access */
+.public-circular-toolbar{max-width:980px;margin:24px auto 0;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #dce5ef;border-radius:10px;background:#f4f7fb}
+.public-circular-toolbar>span{display:grid;gap:4px}
+.public-circular-toolbar>span b{font-size:12px;letter-spacing:.8px;color:#17385f}
+.public-circular-toolbar>span small{font-size:11px;color:#6b7a8d}
+.official-circular-link{display:inline-flex;align-items:center;justify-content:center;padding:11px 15px;border-radius:6px;background:#17385f;color:#fff!important;text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.3px}
+.official-circular-link:hover{background:#28547f}
+.public-circular .circular-source-tag{margin-bottom:7px;color:#9b762c;font-size:9px;font-weight:900;letter-spacing:1.1px}
+.public-circular.official-public-circular{border-left-color:#c49a3b}
+.public-circular.official-public-circular a{display:inline-block;margin-top:5px;padding:8px 12px;border-radius:5px;background:#edf3fa;color:#17385f;font-size:11px}
+.public-circular.official-public-circular a:hover{background:#dce8f5}
+.dash-external-nav{display:block;margin:12px 8px 6px;padding:11px 12px;border:1px solid #c49a3b;border-radius:7px;color:#f8e4ad!important;background:#21436f;text-decoration:none;font-size:12px;font-weight:800}
+.dash-external-nav:hover{background:#2b5789;color:#fff!important}
+@media(max-width:600px){.public-circular-toolbar{align-items:stretch;flex-direction:column}.official-circular-link{width:100%}}

@@ -31,6 +31,13 @@ const superItems=[["school","School & Personal Details"],["overview","Dashboard"
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const items=isSuper?superItems:memberItems.concat(canReview?[["reviewGallery","Verify Photo Uploads"]]:[]);
 items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+const officialCircularLink=document.createElement("a");
+officialCircularLink.className="dash-external-nav";
+officialCircularLink.href="https://www.bsgindia.org/circular.php";
+officialCircularLink.target="_blank";
+officialCircularLink.rel="noopener noreferrer";
+officialCircularLink.textContent="BSG India Circulars ↗";
+nav.appendChild(officialCircularLink);
 
 async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
