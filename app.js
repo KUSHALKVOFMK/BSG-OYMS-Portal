@@ -23,24 +23,32 @@ function readPublishedEvents(){
   return Array.isArray(rows)?rows.filter(x=>x&&x.status==="Published"&&!x.archived&&/^\d{4}-\d{2}-\d{2}$/.test(x.date||"")):[];
  }catch{return [];}
 }
+function renderUpcomingEmptyState(root,message){
+ root.innerHTML='<div class="upcoming-empty"><span class="upcoming-empty-icon">✦</span><div><strong>Nothing scheduled just yet</strong><p>'+esc(message||"Published school and unit activities will appear here as soon as they are announced.")+'</p></div><span class="upcoming-empty-note">CHECK BACK SOON</span></div>';
+}
 function initUpcomingProgrammes(){
  const root=document.getElementById("upcomingProgrammeList");if(!root)return;
- const today=new Date();today.setHours(0,0,0,0);
- const rows=readPublishedEvents().filter(x=>new Date(x.date+"T00:00:00")>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
- if(!rows.length){root.innerHTML='<div class="upcoming-empty">No upcoming programmes have been published yet. Published events will appear here.</div>';return;}
- root.innerHTML=rows.map(x=>{
-  const d=new Date(x.date+"T00:00:00"),attach=safeHttpUrl(x.attachmentUrl),registration=safeHttpUrl(x.registrationUrl);
-  const details=[x.time,x.section||"All Sections",x.venue,x.organiser?"Organiser: "+x.organiser:""].filter(Boolean).map(esc).join(" · ");
-  return '<article class="upcoming-programme-card"><time datetime="'+esc(x.date)+'"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString("en-IN",{month:"short",year:"numeric"})+'</span></time><div class="upcoming-programme-copy"><h3>'+esc(x.title)+'</h3><p>'+details+'</p>'+(x.description?'<small>'+esc(x.description)+'</small>':"")+'<div class="upcoming-programme-links">'+(attach?'<a href="'+attach+'" target="_blank" rel="noopener noreferrer">Programme attachment ↗</a>':"")+(registration?'<a href="'+registration+'" target="_blank" rel="noopener noreferrer">Registration ↗</a>':"")+'</div></div></article>';
- }).join("");
+ try{
+  const today=new Date();today.setHours(0,0,0,0);
+  const rows=readPublishedEvents().filter(x=>new Date(x.date+"T00:00:00")>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+  if(!rows.length){renderUpcomingEmptyState(root,"New school and unit programmes will be featured here once the Super Administrator publishes them.");return;}
+  root.innerHTML=rows.map(x=>{
+   const d=new Date(x.date+"T00:00:00"),attach=safeHttpUrl(x.attachmentUrl),registration=safeHttpUrl(x.registrationUrl);
+   const details=[x.time,x.section||"All Sections",x.venue,x.organiser?"Organiser: "+x.organiser:""].filter(Boolean).map(esc).join(" · ");
+   return '<article class="upcoming-programme-card"><time datetime="'+esc(x.date)+'"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString("en-IN",{month:"short",year:"numeric"})+'</span></time><div class="upcoming-programme-copy"><h3>'+esc(x.title||"School Programme")+'</h3><p>'+details+'</p>'+(x.description?'<small>'+esc(x.description)+'</small>':"")+'<div class="upcoming-programme-links">'+(attach?'<a href="'+attach+'" target="_blank" rel="noopener noreferrer">Programme attachment ↗</a>':"")+(registration?'<a href="'+registration+'" target="_blank" rel="noopener noreferrer">Registration ↗</a>':"")+'</div></div></article>';
+  }).join("");
+ }catch(error){
+  console.error("Upcoming programmes could not be rendered.",error);
+  renderUpcomingEmptyState(root,"Please refresh the page. Upcoming programme information is temporarily unavailable.");
+ }
 }
 document.addEventListener("DOMContentLoaded",async()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  const contactLogin=document.getElementById("contactLogin");if(contactLogin)contactLogin.onclick=()=>window.location.href="login.html";
  initSidebarNavigation();
  initTemporaryMenuLinks();
- initActivityCalendar();
  initUpcomingProgrammes();
+ try{initActivityCalendar();}catch(error){console.error("Activity calendar could not be initialized.",error);}
  await PortalStorage.init();
  renderPublicCirculars();
  renderPublicGallery();
