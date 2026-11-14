@@ -69,3 +69,22 @@
 .gallery-admin-card img{width:110px;height:90px;object-fit:cover;border-radius:5px;background:#f1edf5}
 .gallery-admin-card p{font-size:12px;margin:5px 0}
 @media(max-width:760px){.gallery-admin-grid{grid-template-columns:1fr}.gallery-admin-card{grid-template-columns:90px 1fr}.gallery-admin-card img{width:90px;height:80px}}
+
+/* Balanced header emblem layout */
+.sitehead{min-height:100px;gap:clamp(10px,2vw,24px);padding:12px clamp(16px,4vw,56px)}
+.logo-stack{width:64px;height:64px;flex:0 0 64px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.header-logo{width:100%;height:100%;max-width:64px;max-height:64px;object-fit:contain;display:block}
+.header-logo.kvs-logo{width:58px;height:58px}
+.header-logo.bsg-logo{width:56px;height:60px}
+.header-logo.anniversary-logo{width:62px;height:62px}
+.header-emblems{display:flex;align-items:center;justify-content:center;gap:12px;flex:0 0 auto}
+.brandtext{min-width:0}
+.brandtext strong{line-height:1.3}
+@media(max-width:650px){
+ .sitehead{min-height:76px;gap:8px;padding:9px 12px}
+ .logo-stack{width:42px;height:42px;flex-basis:42px}
+ .header-logo,.header-logo.kvs-logo,.header-logo.bsg-logo,.header-logo.anniversary-logo{width:40px;height:40px;max-width:40px;max-height:40px}
+ .header-emblems{gap:5px}
+ .brandtext strong{font-size:12px;line-height:1.2}
+ .brandtext span{font-size:10px;line-height:1.25}
+}
