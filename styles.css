@@ -1067,3 +1067,15 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 /* Uploaded slideshow images: fit every aspect ratio without stretching or cropping */
 .admin-uploaded-slide .slide-image{object-fit:contain;object-position:center;background:linear-gradient(135deg,#24133c,#4c1d95)}
 .slide-admin-card img{object-fit:contain;background:linear-gradient(135deg,#24133c,#4c1d95)}
+
+/* Role selection and role-specific login pages */
+.role-kicker{margin:0 0 8px;color:#8a6ab0;font-size:11px;font-weight:800;letter-spacing:1.8px}
+.role-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:20px 0}
+.role-choice{display:flex;align-items:center;gap:12px;min-height:76px;padding:13px;border:1px solid var(--line);border-radius:9px;text-decoration:none;color:var(--ink);background:#fff;transition:border-color .15s,transform .15s,box-shadow .15s}
+.role-choice:hover{border-color:#9b7bc0;transform:translateY(-2px);box-shadow:0 8px 20px #32165712}
+.role-choice-icon{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:10px;background:#f1ebf7;color:var(--purple);font-size:20px;font-weight:700}
+.role-choice span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:4px;min-width:0}
+.role-choice strong{font-size:13px;color:var(--deep)}
+.role-choice small{font-size:11px;color:var(--muted)}
+.role-choice>b{color:var(--purple);font-size:18px}
+@media(max-width:600px){.role-choice-grid{grid-template-columns:1fr}.role-choice{min-height:68px}.auth-top{flex-wrap:wrap}.auth-brand{min-width:180px}}
