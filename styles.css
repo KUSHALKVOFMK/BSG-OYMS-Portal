@@ -433,3 +433,62 @@
 @media(max-width:1000px){.portal-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.activity-hub-grid{grid-template-columns:1fr 1fr}.dash-shell{grid-template-columns:1fr}}
 @media(max-width:560px){.portal-quick-grid,.activity-hub-grid{grid-template-columns:1fr}.portal-quick-card{padding:14px}.activity-hub-card{min-height:220px}.hero-slideshow{height:190px}}
+
+
+/* School masthead: follow PM SHRI KV OF Medak's official identity hierarchy,
+   with the Sankalp 2.0 BSG portal clearly identified as the attached portal. */
+.school-masthead{display:flex;align-items:center;gap:clamp(10px,1.6vw,22px);padding:15px clamp(14px,4.5vw,68px);background:#fff;border-bottom:3px solid #214d7b;box-shadow:0 2px 8px #18375c0b;min-height:104px}
+.school-masthead .school-marks{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.school-masthead .logo-stack{width:66px;height:66px;flex:0 0 66px;display:grid;place-items:center}
+.school-masthead .school-badge-stack{width:60px;height:60px;flex-basis:60px}
+.school-masthead .emblem-img{width:100%;height:100%;object-fit:contain}
+.school-masthead .school-brand{flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;gap:3px}
+.school-masthead .school-brand strong{display:block;color:#17385f;font-family:Arial,Helvetica,sans-serif;font-size:clamp(16px,1.65vw,22px);font-weight:800;line-height:1.25;letter-spacing:.05px}
+.school-masthead .school-brand>span{display:block;color:#4f6074;font-size:12px;line-height:1.4}
+.school-masthead .school-brand small{display:block;color:#66768a;font-size:10px;line-height:1.4}
+.school-masthead .school-brand small i{font-style:normal;color:#b28a34;padding:0 3px}
+.school-masthead .portal-identity{display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:8px 0 8px 18px;border-left:1px solid #dce4ed}
+.school-masthead .portal-identity .logo-stack{width:54px;height:54px;flex:0 0 54px}
+.school-masthead .portal-identity>div:last-child{display:flex;flex-direction:column;gap:4px;white-space:nowrap}
+.school-masthead .portal-identity strong{font-size:15px;font-weight:900;letter-spacing:1.2px;color:#17385f}
+.school-masthead .portal-identity span{font-size:10px;font-weight:700;letter-spacing:.35px;color:#9b762c}
+.school-masthead .role-context{margin-top:3px;padding:3px 7px;border-left:3px solid #c49a3b;background:#f4f7fb;color:#4c6078!important;font-size:10px!important;width:max-content}
+.sitehead.school-masthead{padding-top:15px;padding-bottom:15px}
+.auth-top.school-masthead{padding-top:15px;padding-bottom:15px}
+.dash-header.school-masthead{position:sticky;top:0;z-index:5;padding-top:12px;padding-bottom:12px}
+.dash-header.school-masthead .dash-heading{text-align:left;min-width:0}
+.dash-header.school-masthead .dash-heading strong{font-size:clamp(15px,1.5vw,20px);line-height:1.25}
+.dash-header.school-masthead .dash-heading>span:not(.role-context){font-size:11px;color:#4f6074;line-height:1.4}
+.dash-header.school-masthead .dash-heading small{font-size:10px;color:#66768a}
+.dash-header.school-masthead .dash-heading .role-context{display:inline-block}
+.dash-header.school-masthead #logout{flex:0 0 auto;white-space:nowrap}
+@media(max-width:900px){
+ .school-masthead{gap:10px;padding-left:18px;padding-right:18px}
+ .school-masthead .school-marks{gap:5px}
+ .school-masthead .logo-stack{width:54px;height:54px;flex-basis:54px}
+ .school-masthead .school-badge-stack{width:50px;height:50px;flex-basis:50px}
+ .school-masthead .portal-identity{gap:6px;padding-left:10px}
+ .school-masthead .portal-identity .logo-stack{width:44px;height:44px;flex-basis:44px}
+ .school-masthead .portal-identity strong{font-size:13px}
+}
+@media(max-width:650px){
+ .school-masthead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;padding:10px 12px;min-height:0}
+ .school-masthead .school-marks{grid-column:1;grid-row:1;gap:4px}
+ .school-masthead .logo-stack{width:42px;height:42px;flex-basis:42px}
+ .school-masthead .school-badge-stack{width:38px;height:38px;flex-basis:38px}
+ .school-masthead .school-brand{grid-column:2;grid-row:1;align-self:center}
+ .school-masthead .school-brand strong{font-size:13px;line-height:1.25}
+ .school-masthead .school-brand>span{font-size:9px;line-height:1.3}
+ .school-masthead .school-brand small{font-size:8px;line-height:1.3}
+ .school-masthead .portal-identity{grid-column:1 / -1;grid-row:2;border-left:0;border-top:1px solid #e2e8ef;padding:7px 0 0;justify-content:center}
+ .school-masthead .portal-identity .logo-stack{width:32px;height:32px;flex-basis:32px}
+ .school-masthead .portal-identity strong{font-size:12px}
+ .school-masthead .portal-identity span{font-size:9px}
+ .dash-header.school-masthead{position:relative;grid-template-columns:auto minmax(0,1fr) auto}
+ .dash-header.school-masthead .school-marks{grid-column:1;grid-row:1}
+ .dash-header.school-masthead .dash-heading{grid-column:2;grid-row:1}
+ .dash-header.school-masthead .dash-heading strong{font-size:12px}
+ .dash-header.school-masthead .dash-heading>span:not(.role-context),.dash-header.school-masthead .dash-heading small{display:none}
+ .dash-header.school-masthead .portal-identity{grid-column:1 / 3;grid-row:2;justify-content:flex-start}
+ .dash-header.school-masthead #logout{grid-column:3;grid-row:1;padding:7px 9px;font-size:11px}
+}
