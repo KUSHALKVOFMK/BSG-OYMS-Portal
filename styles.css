@@ -99,3 +99,33 @@
  .auth-logos img,.auth-logos .anniv{width:40px;height:40px;max-width:40px;max-height:40px}
  .dash-header img{width:36px;height:36px;max-width:36px;max-height:36px;flex-basis:36px}
 }
+
+/* Unified emblem alignment: KVS left, school identity centered, BSG marks right */
+.auth-top{display:flex;align-items:center;justify-content:space-between;gap:clamp(8px,2vw,22px);padding:12px clamp(12px,4vw,56px);min-height:88px}
+.auth-brand{text-align:center;min-width:0;flex:1}
+.auth-brand strong{line-height:1.3}
+.auth-emblems,.dash-emblems{display:flex;align-items:center;justify-content:center;gap:10px;flex:0 0 auto}
+.auth-top .logo-stack,.dash-header .logo-stack{width:62px;height:62px;flex:0 0 62px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.auth-top .header-logo,.dash-header .header-logo{display:block;max-width:100%;max-height:100%;object-fit:contain}
+.auth-top .kvs-logo,.dash-header .kvs-logo{width:58px;height:58px}
+.auth-top .bsg-logo,.dash-header .bsg-logo{width:54px;height:60px}
+.auth-top .anniversary-logo,.dash-header .anniversary-logo{width:62px;height:62px}
+.dash-header{display:flex;align-items:center;gap:clamp(8px,1.5vw,18px);padding:10px clamp(12px,4vw,48px);min-height:84px}
+.dash-heading{flex:1;min-width:0;text-align:center}
+.dash-heading strong{display:block;color:var(--deep);font-size:16px;line-height:1.3}
+.dash-heading span{font-size:11px;color:var(--muted);line-height:1.4}
+.dash-header button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:760px){
+ .auth-top,.dash-header{gap:6px;padding:9px 10px;min-height:68px}
+ .auth-top .logo-stack,.dash-header .logo-stack{width:38px;height:38px;flex-basis:38px}
+ .auth-top .header-logo,.auth-top .kvs-logo,.auth-top .bsg-logo,.auth-top .anniversary-logo,.dash-header .header-logo,.dash-header .kvs-logo,.dash-header .bsg-logo,.dash-header .anniversary-logo{width:36px;height:36px;max-width:36px;max-height:36px}
+ .auth-emblems,.dash-emblems{gap:3px}
+ .auth-brand strong,.dash-heading strong{font-size:11px;line-height:1.2}
+ .auth-brand span,.dash-heading span{font-size:9px;line-height:1.2}
+ .dash-header button{padding:7px 9px;font-size:11px}
+}
+@media(max-width:430px){
+ .auth-top,.dash-header{flex-wrap:wrap;justify-content:center}
+ .auth-brand,.dash-heading{order:3;flex:1 0 100%;text-align:center}
+ .auth-emblems,.dash-emblems{margin-left:auto}
+}
