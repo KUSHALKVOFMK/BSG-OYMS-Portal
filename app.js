@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
  const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
  const contactLogin=document.getElementById("contactLogin");if(contactLogin)contactLogin.onclick=()=>window.location.href="login.html";
  initSidebarNavigation();
+ initActivityCalendar();
  await PortalStorage.init();
  renderPublicCirculars();
  renderPublicGallery();
