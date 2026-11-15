@@ -587,7 +587,7 @@ function renderInstantAnnouncementCurrent(){
  const item=updateAnnouncementStatus(getInstantAnnouncement());
  if(!item){root.innerHTML='<p class="dash-empty">No announcement has been created yet.</p>';return;}
  const remaining=Math.max(0,Math.ceil((Number(item.publishAt||0)-Date.now())/1000));
- const status=item.status==="Scheduled"?"Publishing in "+remaining+" seconds":"Published";
+ const status=item.status==="Scheduled"?"Publishing in "+remaining+" seconds":item.status==="Expired"?"Expired":"Published";
  root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\n/g,"<br>")+'</p><div id="instantCurrentMedia"></div><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';if(item.mediaId)showAnnouncementMedia(item.mediaId,item.mediaType,document.getElementById("instantCurrentMedia"));
 }
 function startAnnouncementAdminTicker(){
