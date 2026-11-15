@@ -54,7 +54,7 @@
  }
  function reset(id){const f=find(id);if(!f)return;if(!confirm("Record a password reset request for "+f.a.loginId+"? The password will not be revealed."))return;f.a.passwordResetRequestedAt=new Date().toISOString();save(f.d);alert("Password reset request recorded in this demo. No password was displayed or emailed.");render();}
  function toggle(id){const f=find(id);if(!f)return;f.a.status=f.a.status==="Active"?"Suspended":"Active";f.a.updatedAt=new Date().toISOString();save(f.d);render();}
- const b=document.createElement("button");b.type="button";b.className="um-nav-button";b.textContent="User Management";b.dataset.accountManager="true";b.onclick=render;
- const overview=nav.querySelector('[data-view="overview"]');if(overview&&overview.nextSibling)nav.insertBefore(b,overview.nextSibling);else nav.appendChild(b);
+ if(!nav.querySelector('[data-view="users"]')){const b=document.createElement("button");b.type="button";b.className="um-nav-button";b.textContent="User Management";b.dataset.accountManager="true";b.onclick=render;
+ const overview=nav.querySelector('[data-view="overview"]');if(overview&&overview.nextSibling)nav.insertBefore(b,overview.nextSibling);else nav.appendChild(b);}
  window.OYMSUserManagementDemo={open:render};
 })();
