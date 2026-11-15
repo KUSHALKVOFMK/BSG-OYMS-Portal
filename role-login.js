@@ -1,22 +1,20 @@
-const form=document.getElementById("loginForm");
-const message=document.getElementById("authMessage");
+const form=document.getElementById("loginForm"),message=document.getElementById("authMessage");
 const slug=form.dataset.role;
-const roleNames={"super-admin":"Super Administrator","administrator":"Administrator","unit-leader":"Unit Leader","assistant-unit-leader":"Assistant Unit Leader","patrol-leader":"Patrol Leader","assistant-patrol-leader":"Assistant Patrol Leader","member":"Member"};
-const role=roleNames[slug];
+const roles={"super-admin":"super_admin","administrator":"administrator","unit-leader":"unit_leader","assistant-unit-leader":"assistant_unit_leader","patrol-leader":"patrol_leader","assistant-patrol-leader":"assistant_patrol_leader","member":"member"};
 function showMessage(text){message.textContent=text;message.style.display="block";}
-document.getElementById("forgot").addEventListener("click",()=>showMessage("Secure password recovery will be available after the database and email service are connected. This preview does not send reset emails."));
-form.addEventListener("submit",event=>{
- event.preventDefault();
- const id=document.getElementById("loginId").value.trim();
- const password=document.getElementById("password").value;
- let account=null;
- try{const rows=JSON.parse(localStorage.getItem("kvs_oyms_demo_accounts_v2")||"[]");account=rows.find(x=>x.id===id);}catch{}
- if(account&&account.status==="Frozen"){showMessage("This preview account is currently frozen by the Super Administrator.");return;}
- const expectedId=slug==="super-admin"?"DEMO-SUPER-001":"DEMO-USER-001";
- if(id===expectedId&&password==="DEMO-ONLY"){
-  sessionStorage.setItem("kvs_oyms_demo_session",JSON.stringify({role,roleSlug:slug,loginId:id,name:"Demo "+role,demo:true}));
+document.getElementById("forgot")?.addEventListener("click",()=>showMessage("For a forgotten password, contact the Super Administrator. A secure reset process can be arranged for your account."));
+form.addEventListener("submit",async event=>{
+ event.preventDefault();message.style.display="none";
+ const client=window.oymsSupabase;if(!client){showMessage("Secure sign-in could not load. Refresh this page and try again.");return;}
+ const button=form.querySelector('button[type="submit"]'),loginId=document.getElementById("loginId").value.trim(),password=document.getElementById("password").value;
+ button.disabled=true;button.textContent="Signing in…";
+ try{
+  const {data,error}=await client.functions.invoke("login-by-id",{body:{login_id:loginId,password,role:roles[slug]}});
+  if(error)throw error;if(!data?.success)throw new Error(data?.error||"Unable to sign in.");
+  const {error:sessionError}=await client.auth.setSession({access_token:data.access_token,refresh_token:data.refresh_token});
+  if(sessionError)throw sessionError;
+  if(data.must_change_password){window.location.href="../../change-password.html";return;}
   window.location.href="../../"+slug+"/dashboard/";
-  return;
- }
- showMessage("The details do not match this role's preview account. Use the demo credentials shown on this page. Real account sign-in will be enabled after secure authentication is connected.");
+ }catch(error){showMessage(error.message||"Login ID or password is incorrect.");}
+ finally{button.disabled=false;button.textContent="Sign In";}
 });
