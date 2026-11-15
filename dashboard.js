@@ -525,7 +525,7 @@ const ANNOUNCEMENT_MEDIA_DB="kvs_oyms_announcement_media_v1";
 function announcementMediaDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(ANNOUNCEMENT_MEDIA_DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains("media"))q.result.createObjectStore("media");};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error||new Error("Could not open media storage."));});}
 async function saveAnnouncementMedia(file){const db=await announcementMediaDb(),id="announcement-media-"+Date.now();await new Promise((resolve,reject)=>{const tx=db.transaction("media","readwrite");tx.objectStore("media").put(file,id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Could not save media."));});db.close();return id;}
 async function getAnnouncementMedia(id){const db=await announcementMediaDb(),value=await new Promise((resolve,reject)=>{const q=db.transaction("media","readonly").objectStore("media").get(id);q.onsuccess=()=>resolve(q.result||null);q.onerror=()=>reject(q.error);});db.close();return value;}
-async function showAnnouncementMedia(id,type,root){if(!root)return;try{const blob=await getAnnouncementMedia(id);if(!blob){root.textContent="Attached media is unavailable in this browser.";return;}const url=URL.createObjectURL(blob),el=document.createElement(String(type||blob.type).startsWith("video/")?"video":"img");el.src=url;if(el.tagName==="VIDEO"){el.controls=true;el.playsInline=true;el.preload="metadata";}else el.alt="Announcement image";root.replaceChildren(el);}catch(e){root.textContent="Could not load attached media.";}}
+async function showAnnouncementMedia(id,type,root){if(!root)return;try{const blob=await getAnnouncementMedia(id);if(!blob){root.textContent="Attached media is unavailable in this browser.";return;}const url=URL.createObjectURL(blob),el=document.createElement(String(type||blob.type).startsWith("video/")?"video":"img");el.src=url;if(el.tagName==="VIDEO"){el.controls=true;el.playsInline=true;el.preload="metadata";el.style.maxWidth="100%";el.style.maxHeight="min(42vh,320px)";}else{el.alt="Announcement image";el.style.maxWidth="100%";el.style.maxHeight="min(42vh,320px)";el.style.width="auto";el.style.height="auto";el.style.objectFit="contain";}root.replaceChildren(el);}catch(e){root.textContent="Could not load attached media.";}}
 function checkAnnouncementVideoDuration(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),v=document.createElement("video");v.preload="metadata";v.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(v.duration);};v.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Could not read this video file."));};v.src=url;});}
 /* Instant announcement preview: browser-local demo only until shared storage is connected. */
 const ANNOUNCEMENT_KEY="kvs_oyms_demo_instant_announcement_v1";
@@ -576,11 +576,13 @@ function instantAnnouncementAdmin(){
   (async()=>{try{
    if(mediaFile&&mediaFile.size>80*1024*1024)throw new Error("Media must be 80 MB or smaller.");
    if(mediaFile&&!mediaFile.type.startsWith("image/")&&!mediaFile.type.startsWith("video/"))throw new Error("Choose an image or video file.");
-   if(mediaFile&&mediaFile.type.startsWith("video/")&&await checkAnnouncementVideoDuration(mediaFile)>30.25)throw new Error("Video must be 30 seconds or shorter.");
-   const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds:30,createdAt:new Date(now).toISOString(),publishAt:now+30000,endAt,status:"Scheduled",createdBy:actor};
+   let videoDuration=0;
+   if(mediaFile&&mediaFile.type.startsWith("video/")){videoDuration=await checkAnnouncementVideoDuration(mediaFile);if(videoDuration>30.25)throw new Error("Video must be 30 seconds or shorter.");}
+   const popupDurationMs=mediaFile&&mediaFile.type.startsWith("video/")?Math.min(120000,Math.max(10000,Math.ceil(videoDuration*1000))):10000;
+   const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds:30,createdAt:new Date(now).toISOString(),publishAt:now+30000,endAt,status:"Scheduled",createdBy:actor,popupDurationMs,videoDuration};
    if(mediaFile){next.mediaId=await saveAnnouncementMedia(mediaFile);next.mediaType=mediaFile.type;}
    setInstantAnnouncement(next);
-   writeLocal("kvs_oyms_demo_launch_event_v1",{id:next.id,title,description,startedAt:now,countdownEndsAt:now+30000,announcementEndsAt:endAt,popupDurationMs:10000});
+   writeLocal("kvs_oyms_demo_launch_event_v1",{id:next.id,title,description,mediaId:next.mediaId||"",mediaType:next.mediaType||"",startedAt:now,countdownEndsAt:now+30000,announcementEndsAt:endAt,popupDurationMs});
    logAction("Launched instant announcement",title);
    form.reset();document.getElementById("instantAnnouncementMediaPreview").innerHTML="";
    window.location.href="../../index.html";
