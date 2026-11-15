@@ -262,7 +262,7 @@
 .slide-track,.hero-slide{position:absolute;inset:0}
 .hero-slide{opacity:0;visibility:hidden;transition:opacity .65s ease}
 .hero-slide.active{opacity:1;visibility:visible}
-.slide-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;object-position:center}
+.slide-image{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:contain;object-position:center;background:#10275c}
 .slide-arrow{z-index:4}
 .slide-dots{z-index:4}
 @media(max-width:760px){
