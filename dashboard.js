@@ -11,6 +11,8 @@ try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
 if(!session||!session.demo){window.location.replace("../../login/");}
 const role=session?.role||"Member";
 const roleSlug=session?.roleSlug||"member";
+const routeRoleSlug=document.body.dataset.role||"";
+if(session?.demo&&routeRoleSlug&&routeRoleSlug!==roleSlug)window.location.replace("../../"+roleSlug+"/dashboard/");
 const isSuper=role==="Super Administrator";
 const canReview=role==="Administrator"||isSuper;
 const canManageCirculars=role==="Administrator"||isSuper;
@@ -100,7 +102,8 @@ function schoolDetails(){
 async function roleOverview(){
  let circularRows=[],photoRows=[];
  try{await PortalStorage.init();circularRows=await PortalStorage.allCirculars();photoRows=await PortalStorage.allPhotos();}catch(error){}
- const events=readLocal("kvs_oyms_demo_events_v1",[]);
+ const eventData=readLocal("kvs_oyms_demo_events_v1",[]);
+ const events=Array.isArray(eventData)?eventData:[];
  const today=new Date().toISOString().slice(0,10);
  const publishedCirculars=circularRows.filter(x=>x.status==="Published"&&!x.archived).length;
  const publishedPhotos=photoRows.filter(x=>x.status==="Published"&&!x.archived).length;
@@ -144,7 +147,8 @@ function patrolWorkspace(){
 
 function activityCalendar(){
  const today=new Date().toISOString().slice(0,10);
- const rows=readLocal("kvs_oyms_demo_events_v1",[]).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+ const eventData=readLocal("kvs_oyms_demo_events_v1",[]);
+ const rows=(Array.isArray(eventData)?eventData:[]).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
  const upcoming=rows.filter(x=>x.date>=today),past=rows.filter(x=>x.date<today).reverse();
  const dateLabel=value=>{if(!value)return "Date not set";const d=new Date(value+"T00:00:00");return isNaN(d.getTime())?value:d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});};
  const renderEvent=x=>'<article class="role-event-card"><div class="role-event-date">'+esc(dateLabel(x.date))+(x.time?'<span>'+esc(x.time)+'</span>':"")+'</div><div><h3>'+esc(x.title||"School BSG Activity")+'</h3><p>'+esc(x.description||"No additional details were provided.")+'</p><small>'+esc(x.section||"All Sections")+' · '+esc(x.venue||"Venue to be announced")+'</small></div></article>';
