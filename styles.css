@@ -1149,3 +1149,12 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
  .school-masthead .portal-identity .logo-stack{width:84px;height:44px;flex-basis:84px}
  .school-masthead .portal-identity .bsg-emblem{width:84px!important;height:44px!important;max-width:84px!important;max-height:44px!important}
 }
+
+
+/* BSG emblem-only variant: keep the supplied fleur-de-lis clear and correctly proportioned */
+.school-masthead .portal-identity .logo-stack{width:58px;height:58px;flex:0 0 58px;display:grid;place-items:center}
+.school-masthead .portal-identity .bsg-emblem{width:58px!important;height:58px!important;max-width:58px!important;max-height:58px!important;object-fit:contain!important}
+@media(max-width:760px){
+ .school-masthead .portal-identity .logo-stack{width:48px;height:48px;flex-basis:48px}
+ .school-masthead .portal-identity .bsg-emblem{width:48px!important;height:48px!important;max-width:48px!important;max-height:48px!important}
+}
