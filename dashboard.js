@@ -10,12 +10,17 @@ let session=null;
 try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
 if(!session||!session.demo){window.location.replace("../../login/");}
 const role=session?.role||"Member";
+const roleSlug=session?.roleSlug||"member";
 const isSuper=role==="Super Administrator";
 const canReview=role==="Administrator"||isSuper;
+const canManageCirculars=role==="Administrator"||isSuper;
+const canManageEvents=role==="Administrator"||isSuper;
+const canUploadGallery=isSuper||["Administrator","Unit Leader","Assistant Unit Leader","Patrol Leader","Assistant Patrol Leader"].includes(role);
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 const actor=session?.name||role;
 document.getElementById("signedInAs").textContent=actor+" · Demo preview";
+if(!isSuper){document.body.classList.add("role-workspace-page");document.body.dataset.role=roleSlug;}
 document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="../../login/";});
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -29,7 +34,15 @@ function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
 const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["slideshow","Homepage Slideshow"],["circulars","Circulars"],["manage","Circular Management"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"]];
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
-const items=isSuper?superItems:memberItems.concat(canReview?[["reviewGallery","Verify Photo Uploads"]]:[]);
+const roleItems={
+ Administrator:[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["manage","Circular Management"],["events","Events & Activities"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"]],
+ "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ "Assistant Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ "Assistant Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ Member:memberItems
+};
+const items=isSuper?superItems:(roleItems[role]||memberItems);
 items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
 const documentsLink=document.createElement("a");
 documentsLink.className="dash-external-nav";
@@ -44,15 +57,18 @@ async function showView(view){
  if(view==="school"&&isSuper)return schoolDetails();
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
- if(view==="manage"&&isSuper)return manageCirculars();
+ if(view==="manage"&&canManageCirculars)return manageCirculars();
  if(view==="gallery")return manageGallery();
  if(view==="reviewGallery"&&canReview)return reviewGallery();
+ if(view==="unitOverview"&&(role==="Unit Leader"||role==="Assistant Unit Leader"))return unitOverview();
+ if(view==="patrolWorkspace"&&(role==="Patrol Leader"||role==="Assistant Patrol Leader"))return patrolWorkspace();
+ if(view==="activityCalendar"&&!isSuper)return activityCalendar();
  if(view==="approvals"&&isSuper)return adminApprovals();
  if(view==="loginIds"&&isSuper)return loginIds();
  if(view==="sections"&&isSuper)return manageSections();
  if(view==="patrols"&&isSuper)return patrolRegistry();
  if(view==="progression"&&isSuper)return progressionAppreciation();
- if(view==="events"&&isSuper)return eventManagement();
+ if(view==="events"&&canManageEvents)return eventManagement();
  if(view==="slideshow"&&isSuper)return manageSlideshow();
  if(view==="reports"&&isSuper)return reports();
  if(view==="logs"&&isSuper)return activityLogs();
@@ -81,7 +97,99 @@ function schoolDetails(){
  document.getElementById("schoolForm").addEventListener("submit",e=>{e.preventDefault();const v={school:document.getElementById("schoolName").value.trim(),unit:document.getElementById("unitName").value.trim(),kvCode:document.getElementById("kvCode").value.trim(),region:document.getElementById("region").value.trim(),district:document.getElementById("district").value.trim(),pin:document.getElementById("pin").value.trim(),name:document.getElementById("personalName").value.trim(),designation:document.getElementById("designation").value.trim(),email:document.getElementById("personalEmail").value.trim(),mobile:document.getElementById("personalMobile").value.trim()};writeLocal(SCHOOL_KEY,v);logAction("Updated school profile","School and personal details updated in this browser.");alert("Saved in this browser preview.");});
 }
 
+async function roleOverview(){
+ let circularRows=[],photoRows=[];
+ try{await PortalStorage.init();circularRows=await PortalStorage.allCirculars();photoRows=await PortalStorage.allPhotos();}catch(error){}
+ const events=readLocal("kvs_oyms_demo_events_v1",[]);
+ const today=new Date().toISOString().slice(0,10);
+ const publishedCirculars=circularRows.filter(x=>x.status==="Published"&&!x.archived).length;
+ const publishedPhotos=photoRows.filter(x=>x.status==="Published"&&!x.archived).length;
+ const upcomingEvents=events.filter(x=>x.status==="Published"&&!x.archived&&x.date>=today).length;
+ const myUploads=photoRows.filter(x=>x.uploadedBy===actor&&x.uploadedRole===role).length;
+ const copy={
+  Administrator:{eyebrow:"SCHOOL ADMINISTRATION",title:"Administrator Workspace",description:"Coordinate school-level circulars and events, review submitted photographs and keep approved information organised.",note:"Administrator actions in this preview are stored only in this browser. They do not publish information to every visitor or create real accounts."},
+  "Unit Leader":{eyebrow:"UNIT COORDINATION",title:"Unit Leader Workspace",description:"Keep track of school BSG notices, unit structure and the activity calendar for Cubs, Bulbuls, Scouts and Guides.",note:"The unit assignment and individual member roster are not connected in this front-end preview. No student details are displayed."},
+  "Assistant Unit Leader":{eyebrow:"UNIT SUPPORT",title:"Assistant Unit Leader Workspace",description:"Support unit coordination by checking published notices, the unit structure and upcoming programme dates.",note:"This preview does not assign live unit permissions or synchronise records between devices."},
+  "Patrol Leader":{eyebrow:"PATROL COORDINATION",title:"Patrol Leader Workspace",description:"Check school BSG notices, activity dates and approved photographs relevant to your patrol.",note:"The patrol assignment and member roster are not connected in this demo. Do not enter student personal information."},
+  "Assistant Patrol Leader":{eyebrow:"PATROL SUPPORT",title:"Assistant Patrol Leader Workspace",description:"Support your Patrol Leader by keeping up with notices, programme dates and approved activity photographs.",note:"No live patrol assignment, member list or student records are connected in this browser preview."},
+  Member:{eyebrow:"MEMBER SPACE",title:"Member Workspace",description:"Read published school notices, view approved Scout and Guide photographs and check upcoming BSG activities.",note:"Your profile is read-only in this demo. Do not enter personal student details or passwords."}
+ };
+ const details=copy[role]||copy.Member;
+ const stats=[["Published circulars",publishedCirculars],["Upcoming activities",upcomingEvents],["Approved gallery items",publishedPhotos],["My media submissions",myUploads]];
+ const shortcuts=items.filter(x=>x[0]!=="overview");
+ main.innerHTML='<div class="role-workspace-head"><div><span class="role-workspace-eyebrow">'+esc(details.eyebrow)+'</span><h1>'+esc(details.title)+'</h1><p>'+esc(details.description)+'</p></div><span class="role-workspace-badge">DEMO PREVIEW</span></div>'+
+ '<div class="role-workspace-notice"><b>Front-end demo:</b> This workspace uses browser-only sample data. It is not secure authentication and does not synchronise across devices.</div>'+
+ '<div class="role-workspace-stats">'+stats.map(x=>'<article class="role-workspace-stat"><strong>'+x[1]+'</strong><span>'+esc(x[0])+'</span></article>').join("")+'</div>'+
+ '<section class="role-workspace-section"><div class="role-workspace-section-head"><div><span>YOUR WORKSPACE</span><h2>Quick Access</h2></div><p>Choose a section to continue</p></div><div class="role-workspace-grid">'+shortcuts.map(x=>'<button class="role-workspace-card" type="button" data-role-go="'+esc(x[0])+'"><strong>'+esc(x[1])+'</strong><span>Open section →</span></button>').join("")+'</div></section>'+
+ '<section class="role-workspace-note"><h2>Important information</h2><p>'+esc(details.note)+'</p></section>';
+ main.querySelectorAll("[data-role-go]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.roleGo)));
+}
+
+function unitOverview(){
+ const groups=getSections();
+ const total=groups.reduce((sum,group)=>sum+(Array.isArray(group.units)?group.units.length:0),0);
+ main.innerHTML='<div class="role-workspace-head"><div><span class="role-workspace-eyebrow">UNIT STRUCTURE</span><h1>Unit Overview</h1><p>Browse the four BSG sections and the group or unit entries saved in this browser preview.</p></div><span class="role-workspace-badge">READ ONLY</span></div>'+
+ '<div class="role-workspace-stats"><article class="role-workspace-stat"><strong>'+groups.length+'</strong><span>BSG sections</span></article><article class="role-workspace-stat"><strong>'+total+'</strong><span>Local group / unit entries</span></article><article class="role-workspace-stat"><strong>Not linked</strong><span>Assigned unit</span></article></div>'+
+ '<div class="role-workspace-grid">'+groups.map(group=>'<article class="role-workspace-card role-workspace-card-static"><strong>'+esc(group.name)+'</strong><span>'+(Array.isArray(group.units)?group.units.length:0)+' local entries</span></article>').join("")+'</div>'+
+ '<div class="role-workspace-note"><h2>Member records</h2><p>Individual student names, dates of birth, contact details and BSG UIDs are not loaded in this public preview. The figures above describe only local sample structure.</p></div>';
+}
+
+function patrolWorkspace(){
+ main.innerHTML='<div class="role-workspace-head"><div><span class="role-workspace-eyebrow">PATROL AREA</span><h1>My Patrol</h1><p>A simple overview for Patrol Leaders and Assistant Patrol Leaders.</p></div><span class="role-workspace-badge">DEMO PREVIEW</span></div>'+
+ '<div class="role-workspace-stats"><article class="role-workspace-stat"><strong>Not assigned</strong><span>Patrol name</span></article><article class="role-workspace-stat"><strong>Not connected</strong><span>Member roster</span></article><article class="role-workspace-stat"><strong>Available</strong><span>Published notices</span></article></div>'+
+ '<div class="role-workspace-note"><h2>Patrol information</h2><p>Your patrol name, leader details and member list will appear here after the authorised setup. This preview intentionally does not collect or display student personal information.</p></div>'+
+ '<div class="role-workspace-grid"><button class="role-workspace-card" type="button" data-role-go="circulars"><strong>Official Circulars</strong><span>Read published notices →</span></button><button class="role-workspace-card" type="button" data-role-go="activityCalendar"><strong>Activity Calendar</strong><span>View programme dates →</span></button><button class="role-workspace-card" type="button" data-role-go="gallery"><strong>Photo Gallery</strong><span>View approved photographs →</span></button></div>';
+ main.querySelectorAll("[data-role-go]").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.roleGo)));
+}
+
+function activityCalendar(){
+ const today=new Date().toISOString().slice(0,10);
+ const rows=readLocal("kvs_oyms_demo_events_v1",[]).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+ const upcoming=rows.filter(x=>x.date>=today),past=rows.filter(x=>x.date<today).reverse();
+ const dateLabel=value=>{if(!value)return "Date not set";const d=new Date(value+"T00:00:00");return isNaN(d.getTime())?value:d.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});};
+ const renderEvent=x=>'<article class="role-event-card"><div class="role-event-date">'+esc(dateLabel(x.date))+(x.time?'<span>'+esc(x.time)+'</span>':"")+'</div><div><h3>'+esc(x.title||"School BSG Activity")+'</h3><p>'+esc(x.description||"No additional details were provided.")+'</p><small>'+esc(x.section||"All Sections")+' · '+esc(x.venue||"Venue to be announced")+'</small></div></article>';
+ main.innerHTML='<div class="role-workspace-head"><div><span class="role-workspace-eyebrow">SCHOOL PROGRAMME</span><h1>Activity Calendar</h1><p>Published school and unit activities available in this browser preview.</p></div><span class="role-workspace-badge">READ ONLY</span></div>'+
+ '<h2>Upcoming Activities</h2><div class="role-event-list">'+(upcoming.length?upcoming.map(renderEvent).join(""):'<div class="dash-empty">No upcoming activities have been published in this browser preview.</div>')+'</div>'+
+ (past.length?'<h2>Previous Activities</h2><div class="role-event-list">'+past.map(renderEvent).join("")+'</div>':"")+
+ '<div class="role-workspace-note"><p>Only events published by an Administrator or Super Administrator in this same browser are shown here.</p></div>';
+}
+
+async function roleGallery(){
+ await PortalStorage.init();
+ const all=await PortalStorage.allPhotos();
+ const published=all.filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
+ const pending=all.filter(x=>x.status==="Pending"&&!x.archived&&x.uploadedBy===actor&&x.uploadedRole===role);
+ const mediaCard=x=>{
+  const blob=x.mediaBlob||x.imageBlob;
+  if(!blob)return "";
+  const src=URL.createObjectURL(blob),video=(x.mediaType||"").startsWith("video/");
+  return '<article class="role-media-card">'+(video?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title||"Approved BSG activity photograph")+'">')+'<div><strong>'+esc(x.title||"BSG activity")+'</strong><p>'+esc(x.caption||"")+'</p><small>'+esc(x.uploadedRole||"Portal user")+'</small></div></article>';
+ };
+ main.innerHTML='<div class="role-workspace-head"><div><span class="role-workspace-eyebrow">SCHOOL ACTIVITIES</span><h1>Photo Gallery</h1><p>View approved school Scouts and Guides activity photographs.</p></div><span class="role-workspace-badge">APPROVED MEDIA</span></div>'+
+ (canUploadGallery?'<form id="roleGalleryForm" class="dash-panel"><h2>Submit a Photograph</h2><p>Submit only school-approved activity photographs. Avoid student names, contact details and other private information.</p><div class="dash-form-grid"><div class="dash-field"><label for="roleGalleryTitle">Photo Title</label><input id="roleGalleryTitle" required maxlength="100" placeholder="Activity title"></div><div class="dash-field full"><label for="roleGalleryCaption">Caption (optional)</label><textarea id="roleGalleryCaption" rows="2" maxlength="240" placeholder="Short activity caption"></textarea></div><div class="dash-field full"><label for="roleGalleryImage">Photograph (JPG, PNG or WebP; up to 8 MB)</label><input id="roleGalleryImage" type="file" accept="image/jpeg,image/png,image/webp" required></div></div><button class="dash-primary" type="submit">Submit for Verification</button></form>':'<div class="role-workspace-note"><p>Gallery viewing is available in this member preview. Photograph submissions are reserved for authorised school and unit leaders.</p></div>')+
+ '<h2>Published Gallery</h2><div class="role-gallery-grid">'+(published.length?published.map(mediaCard).join(""):'<div class="dash-empty">No approved photographs have been published in this browser preview.</div>')+'</div>'+
+ (pending.length?'<h2>My Pending Submissions</h2><div class="role-gallery-grid">'+pending.map(mediaCard).join("")+'</div>':"");
+ const form=document.getElementById("roleGalleryForm");
+ if(form)form.addEventListener("submit",uploadRoleGalleryPhoto);
+}
+async function uploadRoleGalleryPhoto(event){
+ event.preventDefault();
+ const file=document.getElementById("roleGalleryImage").files[0];
+ if(!file)return;
+ if(!["image/jpeg","image/png","image/webp"].includes(file.type)){alert("Please choose a JPG, PNG or WebP photograph.");return;}
+ if(file.size>8*1024*1024){alert("Please choose a photograph smaller than 8 MB.");return;}
+ try{
+  await PortalStorage.requestPersistentStorage();
+  const title=document.getElementById("roleGalleryTitle").value.trim();
+  await PortalStorage.savePhoto({id:"photo-"+Date.now(),title,caption:document.getElementById("roleGalleryCaption").value.trim(),fileName:file.name,imageBlob:file,mediaBlob:file,mediaType:file.type,status:"Pending",uploadedBy:actor,uploadedRole:role,createdAt:new Date().toISOString(),archived:false});
+  logAction("Submitted gallery photograph",title);
+  await roleGallery();
+  alert("Photograph submitted for review in this browser preview. It is not shared to other devices.");
+ }catch(error){alert("The browser could not store this photograph. Try a smaller file or check device storage.");console.error(error);}
+}
+
 async function overview(){
+ if(!isSuper)return roleOverview();
  let circulars=[],photos=[];try{await PortalStorage.init();circulars=await PortalStorage.allCirculars();photos=await PortalStorage.allPhotos();}catch(error){}
  const published=circulars.filter(x=>x.status==="Published"&&!x.archived).length;
  const visiblePhotos=photos.filter(x=>x.status==="Published"&&!x.archived).length;
@@ -134,14 +242,14 @@ async function viewCircularDetail(id,allowDraft=false){
 }
 
 async function manageCirculars(){
- if(!isSuper){overview();return;}
+ if(!canManageCirculars){overview();return;}
  await PortalStorage.init();
  const info=await PortalStorage.estimate();
  main.innerHTML='<h1>Manage Circulars</h1><p>Create, save, publish, unpublish or archive school circulars.</p><div class="dash-alert"><b>Expanded browser storage:</b> PDFs are now saved in IndexedDB instead of the old 1 MB localStorage limit. Browser/device quota applies; this is not yet shared cloud storage.</div><div id="circularQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="circularForm" class="dash-panel"><div class="dash-form-grid">'+
  '<div class="dash-field"><label for="cNumber">Circular Number</label><input id="cNumber" placeholder="e.g. BSG/2026/01"></div>'+
  '<div class="dash-field"><label for="cDate">Issue Date</label><input id="cDate" type="date" required></div>'+
  '<div class="dash-field full"><label for="cTitle">Circular Title / Subject</label><input id="cTitle" required placeholder="Enter circular subject"></div>'+
- '<div class="dash-field"><label for="cIssuer">Issued By</label><input id="cIssuer" value="Super Administrator" required></div>'+
+ '<div class="dash-field"><label for="cIssuer">Issued By</label><input id="cIssuer" value="'+esc(isSuper?"Super Administrator":actor)+'" required></div>'+
  '<div class="dash-field"><label for="cAudience">Applicable To</label><select id="cAudience"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option><option>Unit Leaders</option><option>Patrol Leaders</option></select></div>'+
  '<div class="dash-field full"><label for="cSummary">Short Description</label><textarea id="cSummary" rows="4" placeholder="Add a short summary for the public notice list"></textarea></div>'+
  '<div class="dash-field full"><label for="cPdf">Attach Circular PDF (browser quota applies)</label><input id="cPdf" type="file" accept="application/pdf,.pdf"></div>'+
@@ -152,7 +260,7 @@ async function manageCirculars(){
  await renderCircularTable();
 }
 async function storeCircular(status){
- if(!isSuper){alert("Only the Super Administrator can create or publish circulars.");return;}
+ if(!canManageCirculars){alert("You do not have permission to manage circulars in this preview.");return;}
  const title=document.getElementById("cTitle").value.trim();if(!title){alert("Please enter a circular title.");return;}
  const file=document.getElementById("cPdf").files[0];if(file&&file.type!=="application/pdf"){alert("Please choose a PDF file.");return;}
  try{
@@ -160,7 +268,7 @@ async function storeCircular(status){
   const now=new Date().toISOString();
   await PortalStorage.saveCircular({id:"circ-"+Date.now(),number:document.getElementById("cNumber").value.trim(),date:document.getElementById("cDate").value,title,issuer:document.getElementById("cIssuer").value.trim(),audience:document.getElementById("cAudience").value,summary:document.getElementById("cSummary").value.trim(),fileName:file?.name||"",fileBlob:file||null,status,createdAt:now,publishedAt:status==="Published"?now:"",archived:false});
   logAction(status+" circular",title);
-  document.getElementById("circularForm").reset();document.getElementById("cIssuer").value="Super Administrator";document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
+  document.getElementById("circularForm").reset();document.getElementById("cIssuer").value=isSuper?"Super Administrator":actor;document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
   await renderCircularTable();
   const info=await PortalStorage.estimate();document.getElementById("circularQuota").textContent="Storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
   alert(status==="Published"?"Circular published in this browser preview. It is not shared to other devices.":"Circular saved as a draft in this browser preview.");
@@ -174,7 +282,7 @@ async function renderCircularTable(){
  root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>b.dataset.action==="view"?viewCircularDetail(b.dataset.id,true):changeCircular(b.dataset.id,b.dataset.action)));
 }
 async function changeCircular(id,action){
- if(!isSuper){alert("Only the Super Administrator can change circulars.");return;}
+ if(!canManageCirculars){alert("You do not have permission to change circulars in this preview.");return;}
  const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
  if(action==="archive"){x.archived=true;x.status="Archived";}
  if(action==="publish"){x.status="Published";x.publishedAt=new Date().toISOString();}
@@ -183,6 +291,7 @@ async function changeCircular(id,action){
 }
 
 async function manageGallery(){
+ if(!isSuper)return roleGallery();
  await PortalStorage.init();
  const info=await PortalStorage.estimate();
  main.innerHTML='<h1>Photo Gallery</h1><p>Upload school-approved Scout and Guide activity photographs.</p><div class="dash-alert"><b>Expanded browser storage:</b> Photos are stored in IndexedDB, not localStorage. Browser/device quota applies. This preview does not sync photos to other devices. Upload only school-approved photographs and avoid private student information.</div><div id="galleryQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="galleryForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="galleryTitle">Photo Title</label><input id="galleryTitle" required placeholder="e.g. World Thinking Day Celebration"></div><div class="dash-field full"><label for="galleryCaption">Caption / Activity Details</label><textarea id="galleryCaption" rows="3" placeholder="Add date, activity or a short caption"></textarea></div><div class="dash-field full"><label for="galleryImage">Choose Photograph or Video (JPG, PNG, WebP, MP4 or WebM)</label><input id="galleryImage" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" required></div></div><p><button class="dash-primary" type="submit">Submit Media for Verification</button></p></form><h2>Uploaded Photographs</h2><div id="galleryTable"></div>';
@@ -297,6 +406,7 @@ function progressionAppreciation(){
  root.innerHTML=rows.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Patrol</th><th>Progression</th><th>Date of Passing</th><th>Appreciation</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.loginId)+'</td><td>'+esc(x.patrol)+'</td><td>'+esc(x.level)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.appreciation||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No progression records have been entered.</div>';
 }
 async function eventManagement(){
+ if(!canManageEvents){overview();return;}
  const key="kvs_oyms_demo_events_v1",rows=readLocal(key,[]);
  main.innerHTML='<h1>Events &amp; Activities</h1><p>Add a programme to a date and publish it to the homepage Activity Calendar and Upcoming Programmes strip.</p><div class="dash-alert"><b>How it appears on the homepage:</b> Save a programme as a draft, then choose <b>Publish</b>. Published future programmes appear in the Upcoming Programmes strip; all published events appear on the Activity Calendar. Details are saved in this browser only.</div><form id="eventForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field"><label for="eventTitle">Event / Activity Title</label><input id="eventTitle" required maxlength="120" placeholder="e.g. Scout and Guide Meeting"></div><div class="dash-field"><label for="eventDate">Programme Date</label><input id="eventDate" type="date" required></div><div class="dash-field"><label for="eventTime">Programme Time (optional)</label><input id="eventTime" type="time"></div><div class="dash-field"><label for="eventSection">Section</label><select id="eventSection"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option></select></div><div class="dash-field"><label for="eventVenue">Venue</label><input id="eventVenue" placeholder="School / venue"></div><div class="dash-field"><label for="eventOrganiser">Organiser</label><input id="eventOrganiser" placeholder="Unit / teacher / team"></div><div class="dash-field full"><label for="eventDescription">Description</label><textarea id="eventDescription" rows="3" placeholder="Add programme details for visitors"></textarea></div><div class="dash-field"><label for="eventAttachment">Programme Attachment URL (optional)</label><input id="eventAttachment" type="url" placeholder="https://…"><small class="field-help">Link to an approved PDF or programme document.</small></div><div class="dash-field"><label for="eventRegistration">Registration Link (optional)</label><input id="eventRegistration" type="url" placeholder="https://…"></div></div><button class="dash-primary" type="submit">Save Event as Draft</button></form><h2>Saved Events</h2><p class="muted">Only Published events appear on the public homepage.</p><div id="eventTable"></div>';
  document.getElementById("eventForm").addEventListener("submit",e=>{
