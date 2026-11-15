@@ -1219,3 +1219,10 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
  .header-login-hitarea{left:82%;top:68%;width:16%;height:30%;min-height:25px}
 }
 @media(prefers-reduced-motion:reduce){.header-image-shell *{scroll-behavior:auto}}
+
+
+/* Shared database slideshow: show the full uploaded artwork without cropping. */
+.hero-slideshow{height:clamp(190px,36vw,460px);background:#f8f9ff}
+.hero-slideshow .slide-image{object-fit:contain;object-position:center;background:#f8f9ff}
+.admin-uploaded-slide{background:#f8f9ff}
+@media(max-width:650px){.hero-slideshow{height:clamp(150px,42vw,260px)}.hero-slideshow .slide-image{object-fit:contain;background:#f8f9ff}}
