@@ -517,18 +517,26 @@ async function uploadHomepageSlide(event){
  if(!file){setSlideUploadStatus("Choose an image first.","error");return;}
  const ext=(file.name.split(".").pop()||"").toLowerCase(),mime=["image/jpeg","image/png","image/webp"].includes(file.type)?file.type:({jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]);
  if(!mime){setSlideUploadStatus("Choose a JPG, PNG or WebP image.","error");return;}
- if(file.size>32*1024*1024){setSlideUploadStatus("Image is larger than 32 MB. Choose a smaller image.","error");return;}
+ if(file.size>32*1024*1024){setSlideUploadStatus("Original image is larger than 32 MB. Choose a smaller image.","error");return;}
  const endValue=document.getElementById("slideEndDate").value;
  if(endValue&&(!Number.isFinite(new Date(endValue).getTime())||new Date(endValue).getTime()<=Date.now())){setSlideUploadStatus("Choose an end date and time in the future.","error");return;}
- button.disabled=true;button.textContent="Uploading…";setSlideUploadStatus("Uploading image securely to shared storage…","loading");
+ button.disabled=true;button.textContent="Preparing…";setSlideUploadStatus("Automatically adjusting image size for desktop and mobile…","loading");
  let path="";
  try{
+  const bitmap=await createImageBitmap(file),scale=Math.min(1,1920/bitmap.width,900/bitmap.height);
+  const canvas=document.createElement("canvas");canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  const context=canvas.getContext("2d");if(!context)throw new Error("Image resizing is not supported in this browser.");
+  context.fillStyle="#ffffff";context.fillRect(0,0,canvas.width,canvas.height);context.imageSmoothingEnabled=true;context.imageSmoothingQuality="high";context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error("Could not resize the slide image.")),"image/jpeg",0.84));
+  const uploadFile=new File([blob],file.name.replace(/\\.[^.]+$/,"")+".jpg",{type:"image/jpeg"});
+  if(uploadFile.size>10*1024*1024)throw new Error("The resized image is still above the 10 MB storage limit. Please choose another image.");
+  button.textContent="Uploading…";setSlideUploadStatus("Uploading the resized image to shared storage…","loading");
   const title=document.getElementById("slideTitle").value.trim(),caption=document.getElementById("slideCaption").value.trim();
   const {data:existing,error:readError}=await client.from("homepage_slides").select("sort_order").order("sort_order",{ascending:false}).limit(1);
   if(readError)throw readError;
   const nextOrder=(Number(existing?.[0]?.sort_order)||0)+1;
-  path="slides/"+crypto.randomUUID()+"."+({ "image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[mime]);
-  const {error:uploadError}=await client.storage.from("homepage-slides").upload(path,file,{contentType:mime,upsert:false,cacheControl:"3600"});
+  path="slides/"+crypto.randomUUID()+".jpg";
+  const {error:uploadError}=await client.storage.from("homepage-slides").upload(path,uploadFile,{contentType:"image/jpeg",upsert:false,cacheControl:"3600"});
   if(uploadError)throw uploadError;
   const {error:insertError}=await client.from("homepage_slides").insert({title,subtitle:caption,image_path:path,sort_order:nextOrder,is_active:true,expires_at:endValue?new Date(endValue).toISOString():null});
   if(insertError)throw insertError;
