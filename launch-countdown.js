@@ -2,7 +2,7 @@
  "use strict";
  const KEY="kvs_oyms_demo_launch_event_v1";
  const MEDIA_DB="kvs_oyms_announcement_media_v1";
- const seenKey=item=>"kvs_oyms_launch_seen_"+String(item.id||"update")+"_"+new Date().toISOString().slice(0,10);
+ const seenKey=item=>{const d=new Date(),day=[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");return "kvs_oyms_launch_seen_"+String(item.id||"update")+"_"+day;};
  const wasSeenToday=item=>{try{return localStorage.getItem(seenKey(item))==="1";}catch{return false;}};
  const markSeenToday=item=>{try{localStorage.setItem(seenKey(item),"1");}catch{}};
  let timer=null,popupShownUntil=0,activeId="",confettiFor="";
