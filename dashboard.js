@@ -548,7 +548,7 @@ function instantAnnouncementAdmin(){
  '<div class="dash-field full"><label for="instantAnnouncementTitle">Subject / Title</label><input id="instantAnnouncementTitle" maxlength="100" required placeholder="e.g. Important SANKALP 2.0 Update"></div>'+
  '<div class="dash-field full"><label for="instantAnnouncementDescription">Description</label><textarea id="instantAnnouncementDescription" rows="5" maxlength="1200" required placeholder="Write the update that portal users should read"></textarea></div>'+
  '<div class="dash-field full"><label for="instantAnnouncementMedia">Image or video (optional)</label><input id="instantAnnouncementMedia" type="file" accept="image/*,video/mp4,video/webm,video/quicktime"><small class="field-help">One image or a video up to 30 seconds and 80 MB.</small><div id="instantAnnouncementMediaPreview" class="instant-media-preview"></div></div>'+
- '<div class="dash-field"><label for="instantAnnouncementDelay">Publish countdown</label><select id="instantAnnouncementDelay"><option value="30">30 seconds (test)</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="600">10 minutes</option></select><small class="field-help">Countdown is for publishing only. Users will not see a countdown.</small></div>'+
+ '<div class="dash-field"><label>Launch countdown</label><input value="30 seconds" readonly><small class="field-help">The website will be hidden during this countdown, then the announcement will show for 10 seconds.</small></div>'+
  '</div><div id="instantAnnouncementStatus" class="instant-announcement-status" role="status" aria-live="polite">Ready to create an announcement.</div><button class="dash-primary" id="sendInstantAnnouncement" type="submit">Send Announcement</button></form>'+
  '<section class="dash-panel instant-current"><h2>Current Announcement</h2><div id="instantAnnouncementCurrent"></div></section>';
  const form=document.getElementById("instantAnnouncementForm");
@@ -558,9 +558,19 @@ function instantAnnouncementAdmin(){
   const title=document.getElementById("instantAnnouncementTitle").value.trim();
   const description=document.getElementById("instantAnnouncementDescription").value.trim();
   const mediaFile=document.getElementById("instantAnnouncementMedia")?.files?.[0]||null;
-  const delaySeconds=Number(document.getElementById("instantAnnouncementDelay").value)||30;
   if(!title||!description){alert("Please enter both a subject and description.");return;}
-  (async()=>{try{if(mediaFile&&mediaFile.size>80*1024*1024)throw new Error("Media must be 80 MB or smaller.");if(mediaFile&&!mediaFile.type.startsWith("image/")&&!mediaFile.type.startsWith("video/"))throw new Error("Choose an image or video file.");if(mediaFile&&mediaFile.type.startsWith("video/")&&await checkAnnouncementVideoDuration(mediaFile)>30.25)throw new Error("Video must be 30 seconds or shorter.");const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds,createdAt:new Date(now).toISOString(),publishAt:now+delaySeconds*1000,status:"Scheduled",createdBy:actor};if(mediaFile){next.mediaId=await saveAnnouncementMedia(mediaFile);next.mediaType=mediaFile.type;}setInstantAnnouncement(next);logAction("Scheduled instant announcement",title);form.reset();document.getElementById("instantAnnouncementMediaPreview").innerHTML="";document.getElementById("instantAnnouncementStatus").textContent="Announcement queued. Publishing in "+delaySeconds+" seconds…";renderInstantAnnouncementCurrent();startAnnouncementAdminTicker();}catch(err){document.getElementById("instantAnnouncementStatus").textContent="Could not schedule: "+(err.message||"Please try another file.");}})();
+  (async()=>{try{
+   if(mediaFile&&mediaFile.size>80*1024*1024)throw new Error("Media must be 80 MB or smaller.");
+   if(mediaFile&&!mediaFile.type.startsWith("image/")&&!mediaFile.type.startsWith("video/"))throw new Error("Choose an image or video file.");
+   if(mediaFile&&mediaFile.type.startsWith("video/")&&await checkAnnouncementVideoDuration(mediaFile)>30.25)throw new Error("Video must be 30 seconds or shorter.");
+   const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds:30,createdAt:new Date(now).toISOString(),publishAt:now+30000,status:"Scheduled",createdBy:actor};
+   if(mediaFile){next.mediaId=await saveAnnouncementMedia(mediaFile);next.mediaType=mediaFile.type;}
+   setInstantAnnouncement(next);
+   writeLocal("kvs_oyms_demo_launch_event_v1",{id:next.id,title,description,startedAt:now,countdownEndsAt:now+30000,popupEndsAt:now+40000});
+   logAction("Launched instant announcement",title);
+   form.reset();document.getElementById("instantAnnouncementMediaPreview").innerHTML="";
+   window.location.href="../../index.html";
+  }catch(err){document.getElementById("instantAnnouncementStatus").textContent="Could not launch: "+(err.message||"Please try another file.");}})();
  });
  renderInstantAnnouncementCurrent();
  if(item?.status==="Scheduled")startAnnouncementAdminTicker();
@@ -588,6 +598,8 @@ function startAnnouncementAdminTicker(){
 }
 function checkForUserAnnouncement(){
  if(isSuper)return;
+ const launchEvent=readLocal("kvs_oyms_demo_launch_event_v1",null);
+ if(launchEvent&&launchEvent.id===getInstantAnnouncement()?.id&&Date.now()<=Number(launchEvent.popupEndsAt||0))return;
  const item=updateAnnouncementStatus(getInstantAnnouncement());
  if(!item||item.status!=="Published"||hasSeenAnnouncement(item)||announcementNoticeShownFor===item.id)return;
  announcementNoticeShownFor=item.id;
