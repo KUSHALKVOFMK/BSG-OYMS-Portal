@@ -49,9 +49,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
  initTemporaryMenuLinks();
  initUpcomingProgrammes();
  try{initActivityCalendar();}catch(error){console.error("Activity calendar could not be initialized.",error);}
- await PortalStorage.init();
- renderPublicCirculars();
- renderPublicGallery();
+ try{await PortalStorage.init();renderPublicCirculars();renderPublicGallery();}
+ catch(error){console.warn("Local preview media is unavailable; shared homepage slides will still load.",error);}
  await initHeroSlideshow();
 });
 async function renderPublicGallery(){
