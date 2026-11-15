@@ -63,61 +63,33 @@ async function renderPublicGallery(){
  }catch(error){root.innerHTML='<p class="muted">Gallery storage is not available in this browser.</p>';console.error(error);}
 }
 async function initHeroSlideshow(){
- const track=document.querySelector(".slide-track");
- const dotsRoot=document.querySelector(".slide-dots");
- if(!track||!dotsRoot)return;
+ const track=document.querySelector(".slide-track"),dotsRoot=document.querySelector(".slide-dots"),hero=track?.closest(".hero-slideshow");
+ if(!track||!dotsRoot||!hero)return;
  try{
-  await PortalStorage.init();
-  const now=new Date(),todayKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
-  const uploaded=(await PortalStorage.allSlides()).filter(x=>x.status==="Published"&&!x.archived&&(!x.displayUntil||x.displayUntil>=todayKey)).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)||(a.createdAt||"").localeCompare(b.createdAt||""));
-  uploaded.forEach(item=>{
-   if(!(item.imageBlob instanceof Blob))return;
-   const slide=document.createElement("div");
-   slide.className="hero-slide admin-uploaded-slide";
-   const img=document.createElement("img");
-   img.className="slide-image";
-   img.src=URL.createObjectURL(item.imageBlob);
-   img.alt=item.altText||item.title||"School and Scouts and Guides slideshow image";
-   slide.appendChild(img);
-   if(item.title||item.caption){
-    const caption=document.createElement("div");
-    caption.className="admin-slide-caption";
-    if(item.title){const title=document.createElement("strong");title.textContent=item.title;caption.appendChild(title);}
-    if(item.caption){const desc=document.createElement("span");desc.textContent=item.caption;caption.appendChild(desc);}
-    slide.appendChild(caption);
-   }
+  const client=window.oymsSupabase;if(!client)throw new Error("Shared slideshow service is unavailable.");
+  const now=new Date().toISOString();
+  const {data:rows,error}=await client.from("homepage_slides").select("id,title,subtitle,image_path,sort_order,expires_at").eq("is_active",true).or("expires_at.is.null,expires_at.gt."+now).order("sort_order",{ascending:true}).order("created_at",{ascending:true});
+  if(error)throw error;
+  track.replaceChildren();
+  (rows||[]).forEach(item=>{
+   const {data}=client.storage.from("homepage-slides").getPublicUrl(item.image_path);if(!data?.publicUrl)return;
+   const slide=document.createElement("div");slide.className="hero-slide admin-uploaded-slide";
+   const img=document.createElement("img");img.className="slide-image";img.loading="lazy";img.src=data.publicUrl;img.alt=item.title||"PM SHRI KV OF Medak and Bharat Scouts and Guides";
+   img.onerror=()=>{slide.remove();if(!track.querySelector(".hero-slide"))hero.hidden=true;};slide.appendChild(img);
+   if(item.title||item.subtitle){const caption=document.createElement("div");caption.className="admin-slide-caption";if(item.title){const title=document.createElement("strong");title.textContent=item.title;caption.appendChild(title);}if(item.subtitle){const sub=document.createElement("span");sub.textContent=item.subtitle;caption.appendChild(sub);}slide.appendChild(caption);}
    track.appendChild(slide);
   });
- }catch(error){console.warn("Uploaded homepage slides could not be loaded in this browser.",error);}
- const slides=[...track.querySelectorAll(".hero-slide")];
- const hero=track.closest(".hero-slideshow");
- const previous=document.querySelector(".slide-arrow.previous");
- const next=document.querySelector(".slide-arrow.next");
- if(!slides.length){if(hero)hero.hidden=true;return;}
- if(hero)hero.hidden=false;
- const hasNavigation=slides.length>1;
- if(previous)previous.hidden=!hasNavigation;
- if(next)next.hidden=!hasNavigation;
- dotsRoot.hidden=!hasNavigation;
+ }catch(error){console.error("Shared homepage slides could not be loaded.",error);}
+ const slides=[...track.querySelectorAll(".hero-slide")];if(!slides.length){hero.hidden=true;return;}hero.hidden=false;
+ const previous=document.querySelector(".slide-arrow.previous"),next=document.querySelector(".slide-arrow.next"),multiple=slides.length>1;
+ if(previous)previous.hidden=!multiple;if(next)next.hidden=!multiple;dotsRoot.hidden=!multiple;dotsRoot.replaceChildren();
  let current=0,timer;
- dotsRoot.innerHTML="";
- slides.forEach((slide,i)=>{
-  const dot=document.createElement("button");
-  dot.type="button";
-  dot.setAttribute("aria-label","Slide "+(i+1));
-  if(i===0)dot.classList.add("active");
-  dotsRoot.appendChild(dot);
- });
- const dots=[...dotsRoot.querySelectorAll("button")];
- const show=n=>{current=(n+slides.length)%slides.length;slides.forEach((slide,i)=>slide.classList.toggle("active",i===current));dots.forEach((dot,i)=>dot.classList.toggle("active",i===current));};
- const restart=()=>{clearInterval(timer);timer=window.setInterval(()=>show(current+1),7000);};
- previous?.addEventListener("click",()=>{show(current-1);restart();});
- next?.addEventListener("click",()=>{show(current+1);restart();});
- dots.forEach((dot,i)=>dot.addEventListener("click",()=>{show(i);restart();}));
- show(0);
- if(hasNavigation)restart();
+ slides.forEach((slide,i)=>{const dot=document.createElement("button");dot.type="button";dot.setAttribute("aria-label","Show slide "+(i+1));if(i===0)dot.classList.add("active");dotsRoot.appendChild(dot);});
+ const dots=[...dotsRoot.querySelectorAll("button")],show=n=>{current=(n+slides.length)%slides.length;slides.forEach((x,i)=>x.classList.toggle("active",i===current));dots.forEach((x,i)=>x.classList.toggle("active",i===current));};
+ const restart=()=>{clearInterval(timer);if(multiple)timer=window.setInterval(()=>show(current+1),7000);};
+ previous?.addEventListener("click",()=>{show(current-1);restart();});next?.addEventListener("click",()=>{show(current+1);restart();});dots.forEach((dot,i)=>dot.addEventListener("click",()=>{show(i);restart();}));
+ show(0);restart();
 }
-
 function initActivityCalendar(){
  const daysRoot=document.getElementById("activityCalendarDays"),eventsRoot=document.getElementById("activityCalendarEvents");
  if(!daysRoot||!eventsRoot)return;
