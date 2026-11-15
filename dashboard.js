@@ -311,51 +311,33 @@ async function viewCircularDetail(id,allowDraft=false){
 
 async function manageCirculars(){
  if(!isSuper&&!canManageCirculars){overview();return;}
- await PortalStorage.init();
- const info=await PortalStorage.estimate();
- main.innerHTML='<h1>Manage Circulars</h1><p>Create, save, publish, unpublish or archive school circulars.</p><div class="dash-alert"><b>Expanded browser storage:</b> PDFs are now saved in IndexedDB instead of the old 1 MB localStorage limit. Browser/device quota applies; this is not yet shared cloud storage.</div><div id="circularQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="circularForm" class="dash-panel"><div class="dash-form-grid">'+
- '<div class="dash-field"><label for="cNumber">Circular Number</label><input id="cNumber" placeholder="e.g. BSG/2026/01"></div>'+
- '<div class="dash-field"><label for="cDate">Issue Date</label><input id="cDate" type="date" required></div>'+
- '<div class="dash-field full"><label for="cTitle">Circular Title / Subject</label><input id="cTitle" required placeholder="Enter circular subject"></div>'+
- '<div class="dash-field"><label for="cIssuer">Issued By</label><input id="cIssuer" value="'+esc(isSuper?"Super Administrator":actor)+'" required></div>'+
- '<div class="dash-field"><label for="cAudience">Applicable To</label><select id="cAudience"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option><option>Unit Leaders</option><option>Patrol Leaders</option></select></div>'+
- '<div class="dash-field full"><label for="cSummary">Short Description</label><textarea id="cSummary" rows="4" placeholder="Add a short summary for the public notice list"></textarea></div>'+
- '<div class="dash-field full"><label for="cPdf">Attach Circular PDF (browser quota applies)</label><input id="cPdf" type="file" accept="application/pdf,.pdf"></div>'+
- '</div><p><button class="dash-primary" type="submit">Save as Draft</button> <button class="dash-primary" type="button" id="publishNow">Publish Circular</button></p></form><h2>Saved Circulars</h2><div id="circularTable"></div>';
+ const client=window.oymsSupabase;
+ main.innerHTML='<h1>Manage Circulars</h1><p>Create and publish notices that are shared with the public homepage and all portal users.</p><div class="dash-alert"><b>Shared publishing:</b> Circular title, date, audience and summary are saved to the shared database. PDF attachments remain a later enhancement; do not rely on a locally selected PDF being visible to other devices.</div><form id="circularForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field"><label for="cNumber">Circular Number</label><input id="cNumber" placeholder="e.g. BSG/2026/01"></div><div class="dash-field"><label for="cDate">Issue Date</label><input id="cDate" type="date" required></div><div class="dash-field full"><label for="cTitle">Circular Title / Subject</label><input id="cTitle" required placeholder="Enter circular subject"></div><div class="dash-field"><label for="cIssuer">Issued By</label><input id="cIssuer" value="'+esc(isSuper?"Super Administrator":actor)+'" required></div><div class="dash-field"><label for="cAudience">Applicable To</label><select id="cAudience"><option>All</option><option>Scouts</option><option>Guides</option><option>Cubs</option><option>Bulbuls</option><option>Leaders</option></select></div><div class="dash-field full"><label for="cSummary">Short Description</label><textarea id="cSummary" rows="4" placeholder="Add the notice details"></textarea></div></div><p><button class="dash-primary" type="submit">Save as Draft</button> <button class="dash-primary" type="button" id="publishNow">Publish Circular</button></p></form><h2>Saved Circulars</h2><div id="circularTable"></div>';
  document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
  document.getElementById("circularForm").addEventListener("submit",e=>{e.preventDefault();storeCircular("Draft");});
  document.getElementById("publishNow").addEventListener("click",()=>storeCircular("Published"));
  await renderCircularTable();
 }
 async function storeCircular(status){
- if(!isSuper&&!canManageCirculars){alert("You do not have permission to manage circulars in this preview.");return;}
- const title=document.getElementById("cTitle").value.trim();if(!title){alert("Please enter a circular title.");return;}
- const file=document.getElementById("cPdf").files[0];if(file&&file.type!=="application/pdf"){alert("Please choose a PDF file.");return;}
- try{
-  await PortalStorage.requestPersistentStorage();
-  const now=new Date().toISOString();
-  await PortalStorage.saveCircular({id:"circ-"+Date.now(),number:document.getElementById("cNumber").value.trim(),date:document.getElementById("cDate").value,title,issuer:document.getElementById("cIssuer").value.trim(),audience:document.getElementById("cAudience").value,summary:document.getElementById("cSummary").value.trim(),fileName:file?.name||"",fileBlob:file||null,status,createdAt:now,publishedAt:status==="Published"?now:"",archived:false});
-  logAction(status+" circular",title);
-  document.getElementById("circularForm").reset();document.getElementById("cIssuer").value=isSuper?"Super Administrator":actor;document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
-  await renderCircularTable();
-  const info=await PortalStorage.estimate();document.getElementById("circularQuota").textContent="Storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
-  alert(status==="Published"?"Circular published in this browser preview. It is not shared to other devices.":"Circular saved as a draft in this browser preview.");
- }catch(error){alert("The browser could not store this file. Check available device storage or choose a smaller PDF.");console.error(error);}
+ if(!isSuper&&!canManageCirculars){alert("You do not have permission to manage circulars.");return;}
+ const client=window.oymsSupabase,title=document.getElementById("cTitle").value.trim();
+ if(!title){alert("Please enter a circular title.");return;}
+ if(!client){alert("Shared database is unavailable. Please sign in again.");return;}
+ const body=[document.getElementById("cSummary").value.trim(),"Circular No.: "+(document.getElementById("cNumber").value.trim()||"—"),"Issued by: "+document.getElementById("cIssuer").value.trim()].filter(Boolean).join("\n\n");
+ const payload={title,body,published_on:document.getElementById("cDate").value,audience:document.getElementById("cAudience").value,is_published:status==="Published"};
+ const {data,error}=await client.from("notices").insert(payload).select().single();
+ if(error){alert("Could not save the shared circular: "+error.message);return;}
+ logAction(status+" circular",title);document.getElementById("circularForm").reset();document.getElementById("cIssuer").value=isSuper?"Super Administrator":actor;document.getElementById("cDate").value=new Date().toISOString().slice(0,10);
+ await renderCircularTable();alert(status==="Published"?"Circular published to the shared portal.":"Draft saved to the shared database.");
 }
 async function renderCircularTable(){
  const root=document.getElementById("circularTable");if(!root)return;
- const list=(await PortalStorage.allCirculars()).filter(x=>!x.archived);
- if(!list.length){root.innerHTML='<div class="dash-empty">No circulars saved yet.</div>';return;}
- root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Number / Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.number||"—")+'</b><br>'+esc(x.title)+(x.fileName?'<br><small>'+esc(x.fileName)+'</small>':"")+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.audience)+'</td><td><span class="dash-tag '+(x.status==="Published"?"published":"")+'">'+esc(x.status)+'</span></td><td><button class="dash-secondary" data-action="view" data-id="'+esc(x.id)+'">Preview</button> '+(x.status==="Published"?'<button class="dash-secondary" data-action="draft" data-id="'+esc(x.id)+'">Unpublish</button>':'<button class="dash-primary" data-action="publish" data-id="'+esc(x.id)+'">Publish</button>')+' <button class="dash-danger" data-action="archive" data-id="'+esc(x.id)+'">Archive</button></td></tr>').join("")+'</tbody></table></div>';
- root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>b.dataset.action==="view"?viewCircularDetail(b.dataset.id,true):changeCircular(b.dataset.id,b.dataset.action)));
-}
-async function changeCircular(id,action){
- if(!isSuper&&!canManageCirculars){alert("You do not have permission to change circulars in this preview.");return;}
- const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
- if(action==="archive"){x.archived=true;x.status="Archived";}
- if(action==="publish"){x.status="Published";x.publishedAt=new Date().toISOString();}
- if(action==="draft"){x.status="Draft";x.publishedAt="";}
- await PortalStorage.saveCircular(x);logAction(action+" circular",x.title);await renderCircularTable();
+ const client=window.oymsSupabase;if(!client){root.innerHTML='<div class="dash-alert">Shared database is unavailable.</div>';return;}
+ const {data:list,error}=await client.from("notices").select("id,title,body,published_on,audience,is_published,created_at").order("created_at",{ascending:false}).limit(100);
+ if(error){root.innerHTML='<div class="dash-alert">Could not load shared circulars: '+esc(error.message)+'</div>';return;}
+ if(!list?.length){root.innerHTML='<div class="dash-empty">No circulars saved yet.</div>';return;}
+ root.innerHTML='<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Subject</th><th>Date</th><th>Audience</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x.title)+'</b><br><small>'+esc(x.body||"")+'</small></td><td>'+esc(x.published_on||"—")+'</td><td>'+esc(x.audience||"All")+'</td><td><span class="dash-tag '+(x.is_published?"published":"")+'">'+(x.is_published?"Published":"Draft")+'</span></td><td><button class="dash-secondary" data-notice-toggle="'+esc(x.id)+'">'+(x.is_published?"Unpublish":"Publish")+'</button></td></tr>').join("")+'</tbody></table></div>';
+ root.querySelectorAll("[data-notice-toggle]").forEach(b=>b.addEventListener("click",async()=>{const row=list.find(x=>x.id===b.dataset.noticeToggle);if(!row)return;const {error}=await client.from("notices").update({is_published:!row.is_published}).eq("id",row.id);if(error){alert(error.message);return;}logAction(row.is_published?"Unpublished circular":"Published circular",row.title);await renderCircularTable();}));
 }
 
 async function manageGallery(){
