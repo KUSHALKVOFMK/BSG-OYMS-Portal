@@ -428,7 +428,7 @@ async function patrolAccountManagement(){
   if(body.password.length<10){status.textContent="Generate a password of at least 10 characters.";return;}
   button.disabled=true;button.textContent="Creating…";status.textContent="Creating secure account and patrol assignment…";
   try{
-   const {data,error}=await client.functions.invoke("create-patrol-account",{body});if(error)throw error;if(!data?.success)throw new Error(data?.error||"Account could not be created.");
+   const {data,error}=await client.functions.invoke("create-oyms2-patrol-account",{body});if(error)throw error;if(!data?.success)throw new Error(data?.error||"Account could not be created.");
    status.className="slide-upload-status success";status.textContent="Created successfully. Login ID: "+data.login_id+" · Temporary password: "+body.password+" · Give these privately to the Patrol Leader. The password will not be shown again.";
    logAction("Created Patrol Leader Login ID",data.login_id+" · "+body.category);e.target.reset();renderPatrolAccountList();makePassword();
   }catch(error){status.className="slide-upload-status error";status.textContent=error.message||"Could not create the account. Check the Login ID and try again.";}
