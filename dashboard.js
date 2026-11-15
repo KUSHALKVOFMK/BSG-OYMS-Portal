@@ -14,10 +14,10 @@ const roleSlug=session?.roleSlug||"member";
 const routeRoleSlug=document.body.dataset.role||"";
 if(session?.demo&&routeRoleSlug&&routeRoleSlug!==roleSlug)window.location.replace("../../"+roleSlug+"/dashboard/");
 const isSuper=role==="Super Administrator";
-const canReview=false;
-const canManageCirculars=false;
-const canManageEvents=false;
-const canUploadGallery=false;
+const canReview=isSuper;
+const canManageCirculars=isSuper;
+const canManageEvents=isSuper;
+const canUploadGallery=isSuper;
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 const actor=session?.name||role;
@@ -34,7 +34,12 @@ function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
-const superItems=[["instantPopup","Send Instant Pop Up"]];
+const superGroups=[
+ ["ADMIN MANAGEMENT",[["users","Admin Management"],["approvals","Administrator Approvals"],["loginIds","Login ID Registry"],["accounts","Account Controls"]]],
+ ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"]]],
+ ["MONITORING",[["reports","Reports & Analytics"],["logs","Activity Logs"]]]
+];
+const superItems=superGroups.flatMap(group=>group[1]);
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
  Administrator:[],
@@ -44,8 +49,17 @@ const roleItems={
  "Assistant Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  Member:memberItems
 };
-const items=isSuper?superItems:(roleItems[role]||memberItems);
-items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+if(isSuper){
+ const home=document.createElement("button");home.type="button";home.textContent="Dashboard";home.dataset.view="overview";home.addEventListener("click",()=>showView("overview"));nav.appendChild(home);
+ superGroups.forEach(([heading,links])=>{
+  const label=document.createElement("div");label.className="dash-nav-group-label";label.textContent=heading;label.style.cssText="margin:18px 10px 7px;padding-top:12px;border-top:1px solid #e7e0ef;color:#8a789c;font-size:10px;font-weight:850;letter-spacing:1.2px;";
+  nav.appendChild(label);
+  links.forEach(([id,title])=>{const b=document.createElement("button");b.type="button";b.textContent=title;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+ });
+}else{
+ const items=roleItems[role]||memberItems;
+ items.forEach(([id,label])=>{const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.view=id;b.addEventListener("click",()=>showView(id));nav.appendChild(b);});
+}
 const documentsLink=document.createElement("a");
 documentsLink.className="dash-external-nav";
 documentsLink.href="https://documents.bsgindia.org/";
@@ -56,13 +70,19 @@ if(!isSuper&&role!=="Administrator")nav.appendChild(documentsLink);
 
 async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
- if(isSuper||role==="Administrator"){
-  if(view==="users")return window.OYMSUserManagementDemo?.open();
-  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
-  if(isSuper&&view==="overview")return overview();
-  if(view==="overview")return overview();
-  return overview();
- }
+ if(view==="overview")return overview();
+ if(view==="users"&&isSuper)return window.OYMSUserManagementDemo?.open();
+ if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
+ if(isSuper&&view==="circularsManage")return manageCirculars();
+ if(isSuper&&view==="gallery")return manageGallery();
+ if(isSuper&&view==="events")return eventManagement();
+ if(isSuper&&view==="slideshow")return manageSlideshow();
+ if(isSuper&&view==="approvals")return adminApprovals();
+ if(isSuper&&view==="loginIds")return loginIds();
+ if(isSuper&&view==="accounts")return accountControls();
+ if(isSuper&&view==="settings")return portalSettings();
+ if(isSuper&&view==="reports")return reports();
+ if(isSuper&&view==="logs")return activityLogs();
  if(view==="school"&&isSuper)return schoolDetails();
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
@@ -210,7 +230,7 @@ async function overview(){
  const accounts=getAccounts().length;
  main.innerHTML='<h1>'+(isSuper?"Super Administrator Dashboard":esc(role)+" Dashboard")+'</h1><p>Welcome to the KVS-OYMS 2.0 role-based preview.</p><div class="dash-alert"><b>Preview mode:</b> Changes are stored in this browser only. This is not secure live authentication and does not synchronise between devices.</div>'+
  '<div class="dash-stat-grid"><div class="dash-stat"><strong>'+accounts+'</strong><span>Demo Login ID records</span></div><div class="dash-stat"><strong>'+published+'</strong><span>Published circulars</span></div><div class="dash-stat"><strong>'+visiblePhotos+'</strong><span>Published gallery photos</span></div><div class="dash-stat"><strong>'+pendingAdmins+'</strong><span>Pending admin approvals</span></div><div class="dash-stat"><strong>'+pendingFreeze+'</strong><span>Pending freeze requests</span></div></div>'+
- (isSuper?'<h2>Super Administrator Controls</h2><div class="dash-quick-grid">'+superItems.filter(x=>x[0]!=="overview").map(x=>'<button class="dash-quick" data-go="'+x[0]+'">'+esc(x[1])+' <span>Open section →</span></button>').join("")+'</div>':'<h2>Quick access</h2><p>Open Circulars to read notices and Photo Gallery to view or submit school-approved activity photographs.</p>');
+ (isSuper?'<h2>Admin Management</h2><div class="dash-quick-grid">'+superGroups[0][1].map(x=>'<button class="dash-quick" data-go="'+x[0]+'">'+esc(x[1])+' <span>Open section →</span></button>').join("")+'</div><h2>Portal Management</h2><div class="dash-quick-grid">'+superGroups[1][1].map(x=>'<button class="dash-quick" data-go="'+x[0]+'">'+esc(x[1])+' <span>Open section →</span></button>').join("")+'</div><h2>Monitoring</h2><div class="dash-quick-grid">'+superGroups[2][1].map(x=>'<button class="dash-quick" data-go="'+x[0]+'">'+esc(x[1])+' <span>Open section →</span></button>').join("")+'</div>':'<h2>Quick access</h2><p>Open Circulars to read notices and Photo Gallery to view or submit school-approved activity photographs.</p>');
  main.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.go)));
 }
 
@@ -254,7 +274,7 @@ async function viewCircularDetail(id,allowDraft=false){
 }
 
 async function manageCirculars(){
- if(!canManageCirculars){overview();return;}
+ if(!isSuper&&!canManageCirculars){overview();return;}
  await PortalStorage.init();
  const info=await PortalStorage.estimate();
  main.innerHTML='<h1>Manage Circulars</h1><p>Create, save, publish, unpublish or archive school circulars.</p><div class="dash-alert"><b>Expanded browser storage:</b> PDFs are now saved in IndexedDB instead of the old 1 MB localStorage limit. Browser/device quota applies; this is not yet shared cloud storage.</div><div id="circularQuota" class="dash-storage-line">Storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="circularForm" class="dash-panel"><div class="dash-form-grid">'+
@@ -272,7 +292,7 @@ async function manageCirculars(){
  await renderCircularTable();
 }
 async function storeCircular(status){
- if(!canManageCirculars){alert("You do not have permission to manage circulars in this preview.");return;}
+ if(!isSuper&&!canManageCirculars){alert("You do not have permission to manage circulars in this preview.");return;}
  const title=document.getElementById("cTitle").value.trim();if(!title){alert("Please enter a circular title.");return;}
  const file=document.getElementById("cPdf").files[0];if(file&&file.type!=="application/pdf"){alert("Please choose a PDF file.");return;}
  try{
@@ -294,7 +314,7 @@ async function renderCircularTable(){
  root.querySelectorAll("button[data-action]").forEach(b=>b.addEventListener("click",()=>b.dataset.action==="view"?viewCircularDetail(b.dataset.id,true):changeCircular(b.dataset.id,b.dataset.action)));
 }
 async function changeCircular(id,action){
- if(!canManageCirculars){alert("You do not have permission to change circulars in this preview.");return;}
+ if(!isSuper&&!canManageCirculars){alert("You do not have permission to change circulars in this preview.");return;}
  const list=await PortalStorage.allCirculars();const x=list.find(item=>item.id===id);if(!x)return;
  if(action==="archive"){x.archived=true;x.status="Archived";}
  if(action==="publish"){x.status="Published";x.publishedAt=new Date().toISOString();}
@@ -418,7 +438,7 @@ function progressionAppreciation(){
  root.innerHTML=rows.length?'<div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Patrol</th><th>Progression</th><th>Date of Passing</th><th>Appreciation</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.loginId)+'</td><td>'+esc(x.patrol)+'</td><td>'+esc(x.level)+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.appreciation||"—")+'</td></tr>').join("")+'</tbody></table></div>':'<div class="dash-empty">No progression records have been entered.</div>';
 }
 async function eventManagement(){
- if(!canManageEvents){overview();return;}
+ if(!isSuper&&!canManageEvents){overview();return;}
  const key="kvs_oyms_demo_events_v1",rows=readLocal(key,[]);
  main.innerHTML='<h1>Events &amp; Activities</h1><p>Add a programme to a date and publish it to the homepage Activity Calendar and Upcoming Programmes strip.</p><div class="dash-alert"><b>How it appears on the homepage:</b> Save a programme as a draft, then choose <b>Publish</b>. Published future programmes appear in the Upcoming Programmes strip; all published events appear on the Activity Calendar. Details are saved in this browser only.</div><form id="eventForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field"><label for="eventTitle">Event / Activity Title</label><input id="eventTitle" required maxlength="120" placeholder="e.g. Scout and Guide Meeting"></div><div class="dash-field"><label for="eventDate">Programme Date</label><input id="eventDate" type="date" required></div><div class="dash-field"><label for="eventTime">Programme Time (optional)</label><input id="eventTime" type="time"></div><div class="dash-field"><label for="eventSection">Section</label><select id="eventSection"><option>All Sections</option><option>Cubs</option><option>Bulbuls</option><option>Scouts</option><option>Guides</option></select></div><div class="dash-field"><label for="eventVenue">Venue</label><input id="eventVenue" placeholder="School / venue"></div><div class="dash-field"><label for="eventOrganiser">Organiser</label><input id="eventOrganiser" placeholder="Unit / teacher / team"></div><div class="dash-field full"><label for="eventDescription">Description</label><textarea id="eventDescription" rows="3" placeholder="Add programme details for visitors"></textarea></div><div class="dash-field"><label for="eventAttachment">Programme Attachment URL (optional)</label><input id="eventAttachment" type="url" placeholder="https://…"><small class="field-help">Link to an approved PDF or programme document.</small></div><div class="dash-field"><label for="eventRegistration">Registration Link (optional)</label><input id="eventRegistration" type="url" placeholder="https://…"></div></div><button class="dash-primary" type="submit">Save Event as Draft</button></form><h2>Saved Events</h2><p class="muted">Only Published events appear on the public homepage.</p><div id="eventTable"></div>';
  document.getElementById("eventForm").addEventListener("submit",e=>{
