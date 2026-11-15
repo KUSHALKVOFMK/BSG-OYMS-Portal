@@ -1158,3 +1158,28 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
  .school-masthead .portal-identity .logo-stack{width:48px;height:48px;flex-basis:48px}
  .school-masthead .portal-identity .bsg-emblem{width:48px!important;height:48px!important;max-width:48px!important;max-height:48px!important}
 }
+
+
+/* Final header layout for the supplied KVS seal, PM SHRI mark and full BSG wordmark */
+.school-masthead .school-marks{flex:0 0 70px}
+.school-masthead .kvs-logo-stack{width:66px;height:66px;flex:0 0 66px}
+.school-masthead .kvs-emblem{width:66px;height:66px;object-fit:contain;display:block}
+.school-masthead .pm-shri-mark{width:66px;height:66px;flex:0 0 66px;display:grid;place-items:center}
+.school-masthead .pm-shri-emblem{width:66px;height:66px;object-fit:contain;display:block}
+.school-masthead .portal-identity .logo-stack{width:112px;height:54px;flex:0 0 112px;display:grid;place-items:center}
+.school-masthead .portal-identity .bsg-emblem{width:112px!important;height:54px!important;max-width:112px!important;max-height:54px!important;object-fit:contain!important;display:block!important}
+@media(max-width:900px){
+ .school-masthead .kvs-logo-stack,.school-masthead .kvs-emblem{width:54px;height:54px;max-width:54px;max-height:54px;flex-basis:54px}
+ .school-masthead .pm-shri-mark,.school-masthead .pm-shri-emblem{width:54px;height:54px;max-width:54px;max-height:54px;flex-basis:54px}
+ .school-masthead .portal-identity .logo-stack{width:92px;height:44px;flex-basis:92px}
+ .school-masthead .portal-identity .bsg-emblem{width:92px!important;height:44px!important;max-width:92px!important;max-height:44px!important}
+}
+@media(max-width:650px){
+ .school-masthead .pm-shri-mark{grid-column:1;grid-row:2;width:42px;height:42px;flex-basis:42px}
+ .school-masthead .pm-shri-emblem{width:42px;height:42px;max-width:42px;max-height:42px}
+ .school-masthead .portal-identity{grid-column:1/-1;grid-row:3;justify-content:center}
+ .school-masthead .portal-identity .logo-stack{width:90px;height:40px;flex-basis:90px}
+ .school-masthead .portal-identity .bsg-emblem{width:90px!important;height:40px!important;max-width:90px!important;max-height:40px!important}
+ .dash-header.school-masthead .pm-shri-mark{grid-column:1;grid-row:2}
+ .dash-header.school-masthead .portal-identity{grid-column:1/3;grid-row:3;justify-content:flex-start}
+}
