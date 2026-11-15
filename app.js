@@ -70,10 +70,10 @@ async function initHeroSlideshow(){
   const {data:rows,error}=await client.from("homepage_slides").select("id,title,subtitle,image_path,sort_order,expires_at").eq("is_active",true).or("expires_at.is.null,expires_at.gt."+now).order("sort_order",{ascending:true}).order("created_at",{ascending:true});
   if(error)throw error;
   track.replaceChildren();
-  (rows||[]).forEach(item=>{
+  (rows||[]).forEach((item,index)=>{
    const {data}=client.storage.from("homepage-slides").getPublicUrl(item.image_path);if(!data?.publicUrl)return;
    const slide=document.createElement("div");slide.className="hero-slide admin-uploaded-slide";
-   const img=document.createElement("img");img.className="slide-image";img.loading="lazy";img.src=data.publicUrl;img.alt=item.title||"PM SHRI KV OF Medak and Bharat Scouts and Guides";
+   const img=document.createElement("img");img.className="slide-image";img.loading=index===0?"eager":"lazy";img.src=data.publicUrl;img.alt=item.title||"PM SHRI KV OF Medak and Bharat Scouts and Guides";
    img.onerror=()=>{slide.remove();if(!track.querySelector(".hero-slide"))hero.hidden=true;};slide.appendChild(img);
    if(item.title||item.subtitle){const caption=document.createElement("div");caption.className="admin-slide-caption";if(item.title){const title=document.createElement("strong");title.textContent=item.title;caption.appendChild(title);}if(item.subtitle){const sub=document.createElement("span");sub.textContent=item.subtitle;caption.appendChild(sub);}slide.appendChild(caption);}
    track.appendChild(slide);
