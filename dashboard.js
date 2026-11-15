@@ -490,12 +490,9 @@ async function eventManagement(){
  root.querySelectorAll("[data-event-publish],[data-event-delete]").forEach(b=>b.addEventListener("click",()=>{const list=readLocal(key,[]),x=list.find(y=>y.id===b.dataset.eventPublish||y.id===b.dataset.eventDelete);if(!x)return;if(b.dataset.eventDelete){writeLocal(key,list.filter(y=>y.id!==x.id));logAction("Deleted event",x.title);}else{x.status=x.status==="Published"?"Draft":"Published";x.publishedAt=x.status==="Published"?new Date().toISOString():"";writeLocal(key,list);logAction(x.status+" event",x.title);}eventManagement();}));
 }
 async function orderedHomepageSlides(){
- const slides=await PortalStorage.allSlides();
- slides.sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||""));
- let changed=false;
- slides.forEach((x,i)=>{if(!Number.isFinite(Number(x.order))){x.order=i+1;changed=true;}});
- if(changed)for(const x of slides)await PortalStorage.saveSlide(x);
- return slides.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
+ const client=window.oymsSupabase;if(!client)throw new Error("Shared database connection is unavailable.");
+ const {data,error}=await client.from("homepage_slides").select("id,title,subtitle,image_path,sort_order,is_active,expires_at,created_at").order("sort_order",{ascending:true}).order("created_at",{ascending:true});
+ if(error)throw error;return data||[];
 }
 function setSlideUploadStatus(message,type){
  const status=document.getElementById("slideUploadStatus");if(!status)return;
@@ -503,77 +500,68 @@ function setSlideUploadStatus(message,type){
 }
 async function manageSlideshow(){
  if(!isSuper){alert("Only the Super Administrator can manage homepage slides.");return;}
- try{await PortalStorage.init();}catch(error){main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';return;}
- const info=await PortalStorage.estimate();
- main.innerHTML='<h1>Homepage Slideshow</h1><p>Upload and arrange campaign and school activity images for the public homepage.</p><div class="dash-alert"><b>Super Administrator only:</b> You can reorder slides, hide or show them, and set an optional display end date. Uploaded images are saved in this browser and are visible on the homepage when opened in the same browser on this device.</div><div id="slideStorageInfo" class="dash-storage-line">Browser storage used: '+PortalStorage.formatBytes(info.usage)+' · Available: '+PortalStorage.formatBytes(info.available)+'</div><form id="slideForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="slideTitle">Slide Title</label><input id="slideTitle" required maxlength="100" placeholder="e.g. World Scout Day Celebration"></div><div class="dash-field full"><label for="slideCaption">Short Caption (optional)</label><textarea id="slideCaption" rows="2" maxlength="180" placeholder="Add a short description for the slide"></textarea></div><div class="dash-field"><label for="slideEndDate">Display Until (optional)</label><input id="slideEndDate" type="date"><small class="field-help">The slide is hidden automatically after this date.</small></div><div class="dash-field full"><label for="slideImage">Choose Slideshow Image (JPG, PNG or WebP)</label><input id="slideImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required><small class="field-help">Choose a JPG, PNG or WebP image up to 32 MB.</small></div></div><div id="slideUploadStatus" class="slide-upload-status" role="status" aria-live="polite">Choose an image and select Upload Slide.</div><button class="dash-primary" id="slideUploadButton" type="submit">Upload Slide</button></form><h2>Uploaded Homepage Slides</h2><div id="homepageSlideList" class="slide-admin-grid"></div>';
+ main.innerHTML='<h1>Homepage Slideshow</h1><p>Upload, arrange and schedule images for the public homepage. Changes are shared across all devices.</p><div class="dash-alert"><b>Shared cloud slideshow:</b> Uploaded images are stored in Supabase and appear to every visitor. Images automatically fit the banner without cropping. Use an end date and time when a slide is temporary.</div><form id="slideForm" class="dash-panel"><div class="dash-form-grid"><div class="dash-field full"><label for="slideTitle">Slide Title</label><input id="slideTitle" maxlength="100" placeholder="e.g. World Scout Day Celebration"></div><div class="dash-field full"><label for="slideCaption">Short Caption (optional)</label><textarea id="slideCaption" rows="2" maxlength="180" placeholder="Short description"></textarea></div><div class="dash-field"><label for="slideEndDate">Display Until (optional)</label><input id="slideEndDate" type="datetime-local"><small class="field-help">The slide is hidden automatically after this date and time.</small></div><div class="dash-field full"><label for="slideImage">Choose Slideshow Image (JPG, PNG or WebP)</label><input id="slideImage" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required><small class="field-help">Maximum 32 MB. Wide banner images work best. The full image is fitted automatically.</small></div></div><div id="slideUploadStatus" class="slide-upload-status" role="status" aria-live="polite">Choose an image and select Upload Slide.</div><button class="dash-primary" id="slideUploadButton" type="submit">Upload Slide</button></form><h2>Uploaded Homepage Slides</h2><div id="homepageSlideList" class="slide-admin-grid"></div>';
  document.getElementById("slideForm").addEventListener("submit",uploadHomepageSlide);
  await renderHomepageSlides();
 }
 async function uploadHomepageSlide(event){
- event.preventDefault();
- if(!isSuper){setSlideUploadStatus("Only the Super Administrator can upload homepage slides.","error");return;}
- const form=document.getElementById("slideForm"),button=document.getElementById("slideUploadButton"),file=document.getElementById("slideImage")?.files?.[0];
- if(!file){setSlideUploadStatus("Please choose an image file first.","error");return;}
- const ext=(file.name.split(".").pop()||"").toLowerCase(),typeByExt={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"};
- const mime=["image/jpeg","image/png","image/webp"].includes(file.type)?file.type:typeByExt[ext];
- if(!mime){setSlideUploadStatus("Unsupported image format. Please choose a JPG, PNG or WebP image.","error");return;}
- if(!file.size){setSlideUploadStatus("The selected image is empty. Please choose another image.","error");return;}
-  if(file.size>32*1024*1024){setSlideUploadStatus("This image is larger than 32 MB. Please choose a smaller image.","error");return;}
- if(button){button.disabled=true;button.textContent="Uploading…";}setSlideUploadStatus("Preparing image and saving it to this browser…","loading");
+ event.preventDefault();if(!isSuper)return;
+ const client=window.oymsSupabase,form=document.getElementById("slideForm"),button=document.getElementById("slideUploadButton"),file=document.getElementById("slideImage")?.files?.[0];
+ if(!file){setSlideUploadStatus("Choose an image first.","error");return;}
+ const ext=(file.name.split(".").pop()||"").toLowerCase(),mime=["image/jpeg","image/png","image/webp"].includes(file.type)?file.type:({jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp"}[ext]);
+ if(!mime){setSlideUploadStatus("Choose a JPG, PNG or WebP image.","error");return;}
+ if(file.size>32*1024*1024){setSlideUploadStatus("Image is larger than 32 MB. Choose a smaller image.","error");return;}
+ const endValue=document.getElementById("slideEndDate").value;
+ if(endValue&&(!Number.isFinite(new Date(endValue).getTime())||new Date(endValue).getTime()<=Date.now())){setSlideUploadStatus("Choose an end date and time in the future.","error");return;}
+ button.disabled=true;button.textContent="Uploading…";setSlideUploadStatus("Uploading image securely to shared storage…","loading");
+ let path="";
  try{
-  await PortalStorage.init();
-  const imageBlob=file.slice(0,file.size,mime);
-  if(typeof createImageBitmap==="function"){
-   const bitmap=await createImageBitmap(imageBlob);
-   if(!bitmap.width||!bitmap.height){bitmap.close();throw new Error("The selected image has no readable dimensions.");}
-   bitmap.close();
-  }
-  await PortalStorage.requestPersistentStorage();
-  const title=document.getElementById("slideTitle").value.trim();
-  if(!title)throw new Error("Please enter a title for this slide.");
-  const existing=await orderedHomepageSlides(),nextOrder=existing.reduce((max,x)=>Math.max(max,Number(x.order)||0),0)+1;
-  const id="slide-"+Date.now();
-  const record={id,title,caption:document.getElementById("slideCaption").value.trim(),altText:title,imageBlob,mediaType:mime,status:"Published",uploadedBy:actor,createdAt:new Date().toISOString(),archived:false,order:nextOrder,displayUntil:document.getElementById("slideEndDate").value};
-  await PortalStorage.saveSlide(record);
-  const saved=(await PortalStorage.allSlides()).find(x=>x.id===id);
-  if(!saved||!(saved.imageBlob instanceof Blob))throw new Error("The browser did not confirm that the image was saved. Check available browser storage and try again.");
-  logAction("Uploaded homepage slide",title);
-  form.reset();await renderHomepageSlides();
-  const info=await PortalStorage.estimate();
-  document.getElementById("slideStorageInfo").textContent="Browser storage used: "+PortalStorage.formatBytes(info.usage)+" · Available: "+PortalStorage.formatBytes(info.available);
-  setSlideUploadStatus("✓ "+title+" was uploaded and saved. Refresh the homepage to see the new slide.","success");
+  const title=document.getElementById("slideTitle").value.trim(),caption=document.getElementById("slideCaption").value.trim();
+  const {data:existing,error:readError}=await client.from("homepage_slides").select("sort_order").order("sort_order",{ascending:false}).limit(1);
+  if(readError)throw readError;
+  const nextOrder=(Number(existing?.[0]?.sort_order)||0)+1;
+  path="slides/"+crypto.randomUUID()+"."+({ "image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[mime]);
+  const {error:uploadError}=await client.storage.from("homepage-slides").upload(path,file,{contentType:mime,upsert:false,cacheControl:"3600"});
+  if(uploadError)throw uploadError;
+  const {error:insertError}=await client.from("homepage_slides").insert({title,subtitle:caption,image_path:path,sort_order:nextOrder,is_active:true,expires_at:endValue?new Date(endValue).toISOString():null});
+  if(insertError)throw insertError;
+  logAction("Uploaded homepage slide",title||file.name);form.reset();await renderHomepageSlides();
+  setSlideUploadStatus("✓ Slide uploaded to shared storage and published for all visitors.","success");
  }catch(error){
-  console.error("Homepage slideshow upload failed.",error);
-  setSlideUploadStatus("Upload failed: "+(error?.message||"The browser could not save this image.")+" Try a JPG, PNG or WebP file under 32 MB.","error");
- }finally{
-  if(button){button.disabled=false;button.textContent="Upload Slide";}
- }
+  if(path)await client.storage.from("homepage-slides").remove([path]).catch(()=>{});
+  console.error("Shared slideshow upload failed",error);setSlideUploadStatus("Upload failed: "+(error.message||"Please try again. Check your Super Admin sign-in and storage permissions."),"error");
+ }finally{button.disabled=false;button.textContent="Upload Slide";}
 }
 async function renderHomepageSlides(){
  const root=document.getElementById("homepageSlideList");if(!root)return;
- const slides=await orderedHomepageSlides();
- if(!slides.length){root.innerHTML='<div class="dash-empty">No custom homepage slides have been uploaded yet. The built-in slides will continue to appear.</div>';return;}
- root.innerHTML=slides.map((x,i)=>{const src=URL.createObjectURL(x.imageBlob),visible=x.status==="Published",end=x.displayUntil||"";return '<article class="slide-admin-card"><img src="'+src+'" alt="'+esc(x.altText||x.title)+'"><div><b>'+esc(x.title)+'</b><p>'+esc(x.caption||"No caption")+'</p><span class="dash-tag '+(visible?"published":"")+'">'+(visible?"Visible":"Hidden")+'</span><small class="slide-end-label">Display until: '+esc(end||"No end date")+'</small><div class="slide-admin-actions"><button class="dash-secondary" type="button" data-slide-move="up" data-slide-id="'+esc(x.id)+'" '+(i===0?"disabled":"")+'>Move Up ↑</button><button class="dash-secondary" type="button" data-slide-move="down" data-slide-id="'+esc(x.id)+'" '+(i===slides.length-1?"disabled":"")+'>Move Down ↓</button></div><div class="slide-admin-actions"><button class="dash-secondary" type="button" data-slide-visibility="'+esc(x.id)+'">'+(visible?"Hide Slide":"Show Slide")+'</button><label class="slide-date-edit">End date <input type="date" value="'+esc(end)+'" data-slide-date="'+esc(x.id)+'"></label><button class="dash-secondary" type="button" data-slide-save-date="'+esc(x.id)+'">Save Date</button></div><button class="dash-danger" type="button" data-remove-slide="'+esc(x.id)+'">Remove from Slideshow</button></div></article>';}).join("");
- root.querySelectorAll("[data-slide-move]").forEach(button=>button.addEventListener("click",async()=>{
-  const list=await orderedHomepageSlides(),index=list.findIndex(x=>x.id===button.dataset.slideId),target=index+(button.dataset.slideMove==="up"?-1:1);
-  if(index<0||target<0||target>=list.length)return;
-  const currentOrder=list[index].order;list[index].order=list[target].order;list[target].order=currentOrder;
-  await PortalStorage.saveSlide(list[index]);await PortalStorage.saveSlide(list[target]);logAction("Reordered homepage slide",list[index].title);await renderHomepageSlides();
- }));
- root.querySelectorAll("[data-slide-visibility]").forEach(button=>button.addEventListener("click",async()=>{
-  const list=await PortalStorage.allSlides(),item=list.find(x=>x.id===button.dataset.slideVisibility);if(!item)return;
-  item.status=item.status==="Published"?"Hidden":"Published";await PortalStorage.saveSlide(item);logAction(item.status+" homepage slide",item.title);await renderHomepageSlides();
- }));
- root.querySelectorAll("[data-slide-save-date]").forEach(button=>button.addEventListener("click",async()=>{
-  const list=await PortalStorage.allSlides(),item=list.find(x=>x.id===button.dataset.slideSaveDate),field=root.querySelector('[data-slide-date="'+button.dataset.slideSaveDate+'"]');if(!item||!field)return;
-  item.displayUntil=field.value;await PortalStorage.saveSlide(item);logAction("Updated slide display end date",item.title);await renderHomepageSlides();
- }));
- root.querySelectorAll("[data-remove-slide]").forEach(button=>button.addEventListener("click",async()=>{
-  if(!confirm("Remove this image from the homepage slideshow?"))return;
-  await PortalStorage.removeSlide(button.dataset.removeSlide);logAction("Removed homepage slide",button.dataset.removeSlide);await renderHomepageSlides();
- }));
+ try{
+  const client=window.oymsSupabase,slides=await orderedHomepageSlides();
+  if(!slides.length){root.innerHTML='<div class="dash-empty">No slides are saved in the shared slideshow yet.</div>';return;}
+  root.innerHTML=slides.map((x,i)=>{
+   const src=client.storage.from("homepage-slides").getPublicUrl(x.image_path).data.publicUrl,visible=x.is_active,end=x.expires_at?new Date(x.expires_at).toLocaleString("en-IN"):"No end date";
+   return '<article class="slide-admin-card"><img src="'+esc(src)+'" alt="'+esc(x.title||"Homepage slide")+'"><div><b>'+esc(x.title||"Homepage slide")+'</b><p>'+esc(x.subtitle||"No caption")+'</p><span class="dash-tag '+(visible?"published":"")+'">'+(visible?"Visible to visitors":"Hidden")+'</span><small class="slide-end-label">Display until: '+esc(end)+'</small><div class="slide-admin-actions"><button class="dash-secondary" type="button" data-slide-move="up" data-slide-id="'+esc(x.id)+'" '+(i===0?"disabled":"")+'>Move Up ↑</button><button class="dash-secondary" type="button" data-slide-move="down" data-slide-id="'+esc(x.id)+'" '+(i===slides.length-1?"disabled":"")+'>Move Down ↓</button></div><div class="slide-admin-actions"><button class="dash-secondary" type="button" data-slide-visibility="'+esc(x.id)+'">'+(visible?"Hide Slide":"Show Slide")+'</button><label class="slide-date-edit">End date/time <input type="datetime-local" value="'+(x.expires_at?esc(new Date(new Date(x.expires_at).getTime()-new Date(x.expires_at).getTimezoneOffset()*60000).toISOString().slice(0,16)):"")+'" data-slide-date="'+esc(x.id)+'"></label><button class="dash-secondary" type="button" data-slide-save-date="'+esc(x.id)+'">Save Date</button></div><button class="dash-danger" type="button" data-remove-slide="'+esc(x.id)+'">Remove from Slideshow</button></div></article>';
+  }).join("");
+  root.querySelectorAll("[data-slide-move]").forEach(button=>button.addEventListener("click",async()=>{
+   const list=await orderedHomepageSlides(),i=list.findIndex(x=>x.id===button.dataset.slideId),j=i+(button.dataset.slideMove==="up"?-1:1);if(i<0||j<0||j>=list.length)return;
+   const client=window.oymsSupabase;const a=await client.from("homepage_slides").update({sort_order:list[j].sort_order}).eq("id",list[i].id);if(a.error)throw a.error;
+   const b=await client.from("homepage_slides").update({sort_order:list[i].sort_order}).eq("id",list[j].id);if(b.error)throw b.error;
+   await renderHomepageSlides();
+  }));
+  root.querySelectorAll("[data-slide-visibility]").forEach(button=>button.addEventListener("click",async()=>{
+   const item=slides.find(x=>x.id===button.dataset.slideVisibility);if(!item)return;
+   const {error}=await client.from("homepage_slides").update({is_active:!item.is_active}).eq("id",item.id);if(error){alert(error.message);return;}await renderHomepageSlides();
+  }));
+  root.querySelectorAll("[data-slide-save-date]").forEach(button=>button.addEventListener("click",async()=>{
+   const field=root.querySelector('[data-slide-date="'+button.dataset.slideSaveDate+'"]'),value=field?.value||null;if(value&&new Date(value)<=new Date()){alert("Choose a future end date and time.");return;}
+   const {error}=await client.from("homepage_slides").update({expires_at:value?new Date(value).toISOString():null}).eq("id",button.dataset.slideSaveDate);if(error){alert(error.message);return;}await renderHomepageSlides();
+  }));
+  root.querySelectorAll("[data-remove-slide]").forEach(button=>button.addEventListener("click",async()=>{
+   if(!confirm("Remove this slide from the shared homepage?"))return;const item=slides.find(x=>x.id===button.dataset.removeSlide);if(!item)return;
+   const {error}=await client.from("homepage_slides").delete().eq("id",item.id);if(error){alert(error.message);return;}
+   await client.storage.from("homepage-slides").remove([item.image_path]);await renderHomepageSlides();
+  }));
+ }catch(error){root.innerHTML='<div class="dash-alert">Could not load shared slides: '+esc(error.message||"Please refresh and try again.")+'</div>';}
 }
-
 
 /* Announcement media is stored in IndexedDB rather than localStorage. */
 const ANNOUNCEMENT_MEDIA_DB="kvs_oyms_announcement_media_v1";
