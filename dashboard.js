@@ -275,28 +275,14 @@ function profile(){
 }
 
 async function circulars(){
- await PortalStorage.init();
- const info=await PortalStorage.estimate();
- const list=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.publishedAt||b.date||"").localeCompare(a.publishedAt||a.date||""));
- const audiences=[...new Set(list.map(x=>x.audience||"All Sections"))].sort();
- main.innerHTML='<div class="circular-page-head"><div><span class="circular-eyebrow">INFORMATION CENTRE</span><h1>Official Circulars</h1><p>Browse published school and Scouts &amp; Guides notices. Select a circular to read its full details or open its PDF.</p></div><div class="circular-total"><strong>'+list.length+'</strong><span>Published circulars</span></div></div>'+
- '<div class="circular-storage-note"><b>Browser storage:</b> '+PortalStorage.formatBytes(info.usage)+' used · '+PortalStorage.formatBytes(info.available)+' available on this device.</div>'+
- '<div class="circular-toolbar"><label class="circular-search"><span>Search circulars</span><input id="circularSearch" type="search" placeholder="Search by title, number or keyword"></label><label class="circular-filter"><span>Audience</span><select id="circularAudience"><option value="">All sections</option>'+audiences.map(a=>'<option value="'+esc(a)+'">'+esc(a)+'</option>').join("")+'</select></label><span class="circular-results" id="circularResults"></span></div>'+
- '<div id="publicCirculars" class="circular-card-list"></div>';
- const root=document.getElementById("publicCirculars");
- const search=document.getElementById("circularSearch");
- const audience=document.getElementById("circularAudience");
- const results=document.getElementById("circularResults");
- const render=()=>{
-  const q=search.value.trim().toLowerCase(),selected=audience.value;
-  const filtered=list.filter(x=>{
-   const hay=[x.title,x.number,x.summary,x.issuer,x.audience].join(" ").toLowerCase();
-   return (!q||hay.includes(q))&&(!selected||(x.audience||"All Sections")===selected);
-  });
-  results.textContent=filtered.length+" of "+list.length+" circulars";
-  root.innerHTML=filtered.length?filtered.map(x=>'<article class="circular-card"><div class="circular-card-top"><span class="circular-number">'+esc(x.number||"OFFICIAL CIRCULAR")+'</span><span class="circular-status">PUBLISHED</span></div><h2>'+esc(x.title)+'</h2><div class="circular-meta"><span><b>Issued:</b> '+esc(x.date||"Date not specified")+'</span><span><b>For:</b> '+esc(x.audience||"All Sections")+'</span></div><p>'+esc(x.summary||"Open this circular to view its full details.")+'</p><div class="circular-card-bottom">'+(x.fileBlob?'<span class="circular-file">PDF attached · '+esc(x.fileName||"Circular PDF")+'</span>':'<span class="circular-file">Notice</span>')+'<button class="dash-primary" type="button" data-open-circular="'+esc(x.id)+'">TOUCH TO VIEW</button></div></article>').join(""):'<div class="circular-empty"><strong>No matching circulars</strong><span>Try a different keyword or audience filter.</span></div>';
-  root.querySelectorAll("[data-open-circular]").forEach(b=>b.addEventListener("click",()=>viewCircularDetail(b.dataset.openCircular,false)));
- };
+ const client=window.oymsSupabase;
+ main.innerHTML='<div class="circular-page-head"><div><span class="circular-eyebrow">INFORMATION CENTRE</span><h1>Official Circulars</h1><p>Published notices from the Super Administrator, shared across portal users and devices.</p></div><div class="circular-total"><strong>…</strong><span>Published circulars</span></div></div><div class="circular-toolbar"><label class="circular-search"><span>Search circulars</span><input id="circularSearch" type="search" placeholder="Search by title or keyword"></label><label class="circular-filter"><span>Audience</span><select id="circularAudience"><option value="">All sections</option><option>All</option><option>Scouts</option><option>Guides</option><option>Cubs</option><option>Bulbuls</option><option>Leaders</option></select></label><span class="circular-results" id="circularResults"></span></div><div id="publicCirculars" class="circular-card-list">Loading shared notices…</div>';
+ const root=document.getElementById("publicCirculars"),search=document.getElementById("circularSearch"),audience=document.getElementById("circularAudience"),results=document.getElementById("circularResults");
+ if(!client){root.textContent="Shared notices are unavailable. Please refresh and sign in again.";return;}
+ const {data:list,error}=await client.from("notices").select("id,title,body,published_on,audience,created_at").eq("is_published",true).order("published_on",{ascending:false}).limit(200);
+ if(error){root.textContent="Could not load shared notices: "+error.message;return;}
+ const rows=list||[];main.querySelector(".circular-total strong").textContent=String(rows.length);
+ const render=()=>{const q=search.value.trim().toLowerCase(),selected=audience.value;const filtered=rows.filter(x=>(!q||[x.title,x.body,x.audience].join(" ").toLowerCase().includes(q))&&(!selected||x.audience===selected));results.textContent=filtered.length+" of "+rows.length+" notices";root.innerHTML=filtered.length?filtered.map(x=>'<article class="circular-card"><div class="circular-card-top"><span class="circular-number">SCHOOL / BSG NOTICE</span><span class="circular-status">PUBLISHED</span></div><h2>'+esc(x.title)+'</h2><div class="circular-meta"><span><b>Issued:</b> '+esc(x.published_on||"Date not specified")+'</span><span><b>For:</b> '+esc(x.audience||"All")+'</span></div><p>'+esc(x.body||"")+'</p></article>').join(""):'<div class="circular-empty"><strong>No matching circulars</strong><span>Try another keyword or audience.</span></div>';};
  search.addEventListener("input",render);audience.addEventListener("change",render);render();
 }
 
