@@ -36,7 +36,7 @@ function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
 const superGroups=[
  ["ADMIN MANAGEMENT",[["users","Admin Management"],["approvals","Administrator Approvals"],["loginIds","Login ID Registry"],["accounts","Account Controls"]]],
- ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"]]],
+ ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["reviewGallery","Gallery Review Queue"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"]]],
  ["MONITORING",[["reports","Reports & Analytics"],["logs","Activity Logs"]]]
 ];
 const superItems=superGroups.flatMap(group=>group[1]);
@@ -75,6 +75,7 @@ async function showView(view){
  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
  if(isSuper&&view==="circularsManage")return manageCirculars();
  if(isSuper&&view==="gallery")return manageGallery();
+ if(isSuper&&view==="reviewGallery")return reviewGallery();
  if(isSuper&&view==="events")return eventManagement();
  if(isSuper&&view==="slideshow")return manageSlideshow();
  if(isSuper&&view==="approvals")return adminApprovals();
@@ -672,4 +673,4 @@ window.addEventListener("storage",e=>{if(e.key===ANNOUNCEMENT_KEY)checkForUserAn
 window.addEventListener("focus",checkForUserAnnouncement);
 
 
-PortalStorage.init().then(()=>{showView((isSuper||role==="Administrator")?"users":"overview");checkForUserAnnouncement();}).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView((isSuper||role==="Administrator")?"users":"overview");checkForUserAnnouncement();});
+PortalStorage.init().then(()=>{showView(role==="Administrator"?"users":"overview");checkForUserAnnouncement();}).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView((isSuper||role==="Administrator")?"users":"overview");checkForUserAnnouncement();});
