@@ -567,7 +567,7 @@ function renderInstantAnnouncementCurrent(){
  if(!item){root.innerHTML='<p class="dash-empty">No announcement has been created yet.</p>';return;}
  const remaining=Math.max(0,Math.ceil((Number(item.publishAt||0)-Date.now())/1000));
  const status=item.status==="Scheduled"?"Publishing in "+remaining+" seconds":"Published";
- root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\\n/g,"<br>")+'</p><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';
+ root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\n/g,"<br>")+'</p><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';
 }
 function startAnnouncementAdminTicker(){
  if(announcementTicker)clearInterval(announcementTicker);
@@ -599,7 +599,7 @@ function checkForUserAnnouncement(){
 function openInstantAnnouncement(item){
  if(!item)return;
  const overlay=document.createElement("div");overlay.className="instant-announcement-overlay";overlay.id="instantAnnouncementOverlay";
- overlay.innerHTML='<section class="instant-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="instantAnnouncementModalTitle"><button type="button" class="instant-announcement-close" aria-label="Close announcement">×</button><div class="instant-announcement-spark">✦</div><p class="instant-announcement-kicker">SANKALP 2.0 · PORTAL UPDATE</p><h2 id="instantAnnouncementModalTitle">'+esc(item.title)+'</h2><div class="instant-announcement-copy">'+esc(item.description).replace(/\\n/g,"<br>")+'</div><button type="button" class="dash-primary instant-announcement-done">Got it</button></section>';
+ overlay.innerHTML='<section class="instant-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="instantAnnouncementModalTitle"><button type="button" class="instant-announcement-close" aria-label="Close announcement">×</button><div class="instant-announcement-spark">✦</div><p class="instant-announcement-kicker">SANKALP 2.0 · PORTAL UPDATE</p><h2 id="instantAnnouncementModalTitle">'+esc(item.title)+'</h2><div class="instant-announcement-copy">'+esc(item.description).replace(/\n/g,"<br>")+'</div><button type="button" class="dash-primary instant-announcement-done">Got it</button></section>';
  document.body.appendChild(overlay);
  const close=()=>{markAnnouncementSeen(item);overlay.remove();document.getElementById("instantAnnouncementNotice")?.remove();launchAnnouncementConfetti();};
  overlay.querySelector(".instant-announcement-close").addEventListener("click",close);
