@@ -117,3 +117,14 @@ function initSidebarNavigation(){
  sidebar.querySelectorAll("a").forEach(link=>link.addEventListener("click",()=>setOpen(false)));
  document.addEventListener("keydown",event=>{if(event.key==="Escape")setOpen(false);});
 }
+
+
+/* KVS-OYMS 2.0 public homepage startup */
+document.addEventListener("DOMContentLoaded",()=>{
+ initSidebarNavigation();
+ initTemporaryMenuLinks();
+ initHeroSlideshow();
+ initUpcomingProgrammes();
+ renderPublicCirculars();
+ initActivityCalendar();
+});
