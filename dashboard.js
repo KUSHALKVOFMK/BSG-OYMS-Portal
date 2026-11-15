@@ -31,18 +31,49 @@ function writeLocal(key,value){localStorage.setItem(key,JSON.stringify(value));}
 function logAction(action,detail){const logs=readLocal(LOGS_KEY,[]);logs.unshift({id:"log-"+Date.now(),action,detail,by:actor,role,at:new Date().toISOString()});writeLocal(LOGS_KEY,logs.slice(0,500));}
 function defaultAccounts(){return [{id:"DEMO-SUPER-001",role:"Super Administrator",status:"Active",kind:"Demo preview"},{id:"DEMO-USER-001",role:"Selected non-super role",status:"Active",kind:"Shared role-preview account"}];}
 function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){a=defaultAccounts();writeLocal(ACCOUNTS_KEY,a);}return a;}
+
+const NOTIFICATIONS_KEY="kvs_oyms_demo_login_notifications_v1";
+function recipientAccounts(){
+ const base=getAccounts().map(x=>({loginId:x.id,name:x.name||x.id,role:x.role,status:x.status||"Active"}));
+ const scoped=readLocal("sankalp20_scoped_accounts_demo_v1",{accounts:[]});
+ (Array.isArray(scoped?.accounts)?scoped.accounts:[]).forEach(x=>base.push({loginId:x.loginId||x.id,name:x.name||x.loginId||x.id,role:x.role,status:x.status||"Active"}));
+ const seen=new Set();
+ return base.filter(x=>x.loginId&&x.status==="Active"&&!seen.has(x.loginId)&&seen.add(x.loginId));
+}
+function sendNotifications(){
+ if(!isSuper){overview();return;}
+ const accounts=recipientAccounts(),items=readLocal(NOTIFICATIONS_KEY,[]);
+ main.innerHTML='<h1>Send Notifications</h1><p>Send a message to selected Login IDs or every active account.</p><div class="dash-alert">Preview mode: notifications are saved in this browser only. They are not yet delivered across devices. Shared delivery will be enabled during the secure database phase.</div>'+
+ '<form id="loginNoticeForm" class="dash-panel"><div class="dash-field full"><label for="noticeTitle">Notification Title</label><input id="noticeTitle" maxlength="100" required placeholder="Enter a short title"></div><div class="dash-field full"><label for="noticeMessage">Message</label><textarea id="noticeMessage" rows="5" maxlength="2000" required placeholder="Write the message for the selected Login IDs"></textarea></div>'+
+ '<div class="notice-recipient-head"><h2>Select Recipients</h2><label><input type="checkbox" id="noticeAll"> Select All active Login IDs</label></div><div class="notice-recipient-list">'+(accounts.length?accounts.map(a=>'<label class="notice-recipient"><input type="checkbox" name="noticeRecipient" value="'+esc(a.loginId)+'"><span><b>'+esc(a.loginId)+'</b><small>'+esc(a.name)+' · '+esc(a.role)+'</small></span></label>').join(""):'<p class="dash-empty">No active Login IDs are registered yet.</p>')+'</div><button class="dash-primary" type="submit" '+(!accounts.length?'disabled':'')+'>Send Notification</button></form>'+
+ '<h2>Sent Notification History</h2><div class="dash-table-wrap">'+(items.length?'<table class="dash-table"><thead><tr><th>Sent</th><th>Title</th><th>Recipients</th><th>Message</th></tr></thead><tbody>'+items.map(n=>'<tr><td>'+esc(new Date(n.sentAt).toLocaleString())+'</td><td>'+esc(n.title)+'</td><td>'+esc(n.recipients.length===accounts.length?'All active Login IDs':n.recipients.join(", "))+'</td><td>'+esc(n.message)+'</td></tr>').join("")+'</tbody></table>':'<div class="dash-empty">No notifications sent yet.</div>')+'</div>';
+ const all=document.getElementById("noticeAll"),checks=[...main.querySelectorAll('input[name="noticeRecipient"]')];
+ all.addEventListener("change",()=>checks.forEach(c=>c.checked=all.checked));
+ checks.forEach(c=>c.addEventListener("change",()=>{all.checked=checks.length>0&&checks.every(x=>x.checked);all.indeterminate=checks.some(x=>x.checked)&&!all.checked;}));
+ document.getElementById("loginNoticeForm").addEventListener("submit",e=>{e.preventDefault();const recipients=checks.filter(c=>c.checked).map(c=>c.value);if(!recipients.length){alert("Select at least one Login ID or choose Select All.");return;}const rows=readLocal(NOTIFICATIONS_KEY,[]);rows.unshift({id:"notice-"+Date.now(),title:document.getElementById("noticeTitle").value.trim(),message:document.getElementById("noticeMessage").value.trim(),recipients,sentAt:new Date().toISOString(),sentBy:session?.loginId||actor});writeLocal(NOTIFICATIONS_KEY,rows.slice(0,500));logAction("Sent login notification",rows[0].title+" · "+recipients.length+" recipient(s)");alert("Notification saved for "+recipients.length+" Login ID(s) in this browser preview.");sendNotifications();});
+}
+function myNotifications(){
+ const rows=readLocal(NOTIFICATIONS_KEY,[]),loginId=session?.loginId||"";
+ const received=rows.filter(n=>Array.isArray(n.recipients)&&n.recipients.includes(loginId));
+ const readKey="kvs_oyms_demo_login_notifications_read_"+loginId;
+ const readIds=readLocal(readKey,[]);
+ main.innerHTML='<h1>My Notifications</h1><p>Messages addressed to your Login ID: <b>'+esc(loginId)+'</b></p>'+
+ (received.length?received.map(n=>'<article class="login-notice-card"><div><span class="dash-tag">'+esc(new Date(n.sentAt).toLocaleString())+'</span><h2>'+esc(n.title)+'</h2></div><p>'+esc(n.message).replace(/\n/g,"<br>")+'</p><small>Sent by '+esc(n.sentBy||"Portal Administrator")+'</small></article>').join(""):'<div class="dash-empty">You have no notifications yet.</div>');
+ const unread=received.filter(n=>!readIds.includes(n.id)).map(n=>n.id);
+ if(unread.length)writeLocal(readKey,[...new Set([...readIds,...unread])]);
+}
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
 const superGroups=[
  ["ADMIN MANAGEMENT",[["users","Admin Management"],["approvals","Administrator Approvals"],["loginIds","Login ID Registry"],["accounts","Account Controls"]]],
- ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["reviewGallery","Gallery Review Queue"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"]]],
+ ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["reviewGallery","Gallery Review Queue"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"],["notificationsSend","Send Notifications"]]],
  ["MONITORING",[["reports","Reports & Analytics"],["logs","Activity Logs"]]]
 ];
 const superItems=superGroups.flatMap(group=>group[1]);
-const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
+const memberItems=[["overview","Dashboard"],["profile","My Profile"],["notifications","Notifications"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
- Administrator:[],
+ Administrator:[["overview","Dashboard"],["notifications","Notifications"]],
  "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Assistant Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
@@ -72,6 +103,8 @@ async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  if(view==="overview")return overview();
  if(view==="users"&&(isSuper||role==="Administrator"))return window.OYMSUserManagementDemo?.open();
+ if(isSuper&&view==="notificationsSend")return sendNotifications();
+ if(view==="notifications")return myNotifications();
  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
  if(isSuper&&view==="circularsManage")return manageCirculars();
  if(isSuper&&view==="gallery")return manageGallery();
@@ -82,6 +115,7 @@ async function showView(view){
  if(isSuper&&view==="loginIds")return loginIds();
  if(isSuper&&view==="accounts")return accountControls();
  if(isSuper&&view==="settings")return portalSettings();
+ if(isSuper&&view==="notificationsSend")return sendNotifications();
  if(isSuper&&view==="reports")return reports();
  if(isSuper&&view==="logs")return activityLogs();
  if(view==="school"&&isSuper)return schoolDetails();
