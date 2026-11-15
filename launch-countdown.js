@@ -2,6 +2,9 @@
  "use strict";
  const KEY="kvs_oyms_demo_launch_event_v1";
  const MEDIA_DB="kvs_oyms_announcement_media_v1";
+ const seenKey=item=>"kvs_oyms_launch_seen_"+String(item.id||"update")+"_"+new Date().toISOString().slice(0,10);
+ const wasSeenToday=item=>{try{return localStorage.getItem(seenKey(item))==="1";}catch{return false;}};
+ const markSeenToday=item=>{try{localStorage.setItem(seenKey(item),"1");}catch{}};
  let timer=null,popupShownUntil=0,activeId="",confettiFor="";
  const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||"null");}catch{return null;}};
  const css=()=>{
@@ -49,7 +52,7 @@
  const render=()=>{
   const item=read();if(!item||!item.id){close();return;}
   const now=Date.now(),start=Number(item.startedAt||now),countdownEnd=Number(item.countdownEndsAt||start+30000),endAt=Number(item.announcementEndsAt||item.endAt||countdownEnd+120000);
-  if(now>=endAt){close();return;}
+  if(now>=endAt||wasSeenToday(item)){close();return;}
   css();const el=ensure();if(activeId!==item.id){activeId=item.id;popupShownUntil=0;confettiFor="";}
   if(now<countdownEnd){
    const sec=Math.max(0,Math.ceil((countdownEnd-now)/1000));
@@ -57,7 +60,7 @@
    return;
   }
   if(!popupShownUntil){const desired=Number(item.popupDurationMs||10000);popupShownUntil=Math.min(now+Math.max(10000,Math.min(120000,desired)),endAt);}
-  if(now>=popupShownUntil){close();if(!item.websiteCelebrationShown){item.websiteCelebrationShown=true;try{localStorage.setItem(KEY,JSON.stringify(item));}catch{}websiteCelebration();}return;}
+  if(now>=popupShownUntil){close();markSeenToday(item);if(!item.websiteCelebrationShown){item.websiteCelebrationShown=true;try{localStorage.setItem(KEY,JSON.stringify(item));}catch{}websiteCelebration();}return;}
   if(confettiFor!==item.id){confettiFor=item.id;confetti();}
   const remain=Math.max(0,Math.ceil((popupShownUntil-now)/1000));
   el.innerHTML='<section class="gate-card"><span class="gate-kicker">SANKALP 2.0 · PORTAL UPDATE</span><h1>Website is now open</h1><div class="gate-popup"><h2>'+esc(item.title||"Important Update")+'</h2><p>'+esc(item.description||"A new update is available.")+'</p><div class="gate-media" id="oymsLaunchMedia"></div></div><div class="gate-progress"><i style="transform:scaleX('+Math.max(0,remain/Math.max(1,Math.ceil((popupShownUntil-(item.countdownEndsAt||start+30000))/1000)))+')"></i></div><p style="margin-top:12px;font-size:12px">This announcement will close automatically in '+remain+' seconds.</p></section>';
