@@ -3,16 +3,11 @@ function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;
 function fileUrl(blob){return blob instanceof Blob?URL.createObjectURL(blob):"";}
 async function renderPublicCirculars(){
  const root=document.getElementById("publicCircularList");if(!root)return;
- try{
-  await PortalStorage.init();
-  const items=(await PortalStorage.allCirculars()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.publishedAt||"").localeCompare(a.publishedAt||""));
-  if(!items.length){root.innerHTML='<tr><td colspan="5" class="muted">No school or unit circulars have been published yet.</td></tr>';return;}
-  root.innerHTML=items.map(x=>{
-   const href=x.fileBlob instanceof Blob?fileUrl(x.fileBlob):"";
-   const date=x.date?new Date(x.date+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";
-   return '<tr><td>'+esc(date)+'</td><td>'+esc(x.number||"—")+'</td><td><strong>'+esc(x.title)+'</strong><small>'+esc(x.audience||"All sections")+(x.summary?' · '+esc(x.summary):"")+'</small></td><td>'+(href?'<a href="'+href+'" download="'+esc(x.fileName||"circular.pdf")+'">Download</a>':'—')+'</td><td>'+(href?'<a href="'+href+'" target="_blank" rel="noopener">View</a>':'—')+'</td></tr>';
-  }).join("");
- }catch(error){root.innerHTML='<tr><td colspan="5" class="muted">School circular storage is not available in this browser.</td></tr>';console.error(error);}
+ const client=window.oymsSupabase;if(!client){root.innerHTML='<tr><td colspan="5" class="muted">Shared notices are temporarily unavailable.</td></tr>';return;}
+ const {data:items,error}=await client.from("notices").select("id,title,body,published_on,audience,created_at").eq("is_published",true).order("published_on",{ascending:false}).limit(100);
+ if(error){root.innerHTML='<tr><td colspan="5" class="muted">Could not load published notices.</td></tr>';console.error(error);return;}
+ if(!items?.length){root.innerHTML='<tr><td colspan="5" class="muted">No school or unit circulars have been published yet.</td></tr>';return;}
+ root.innerHTML=items.map(x=>{const date=x.published_on?new Date(x.published_on+"T00:00:00").toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"}):"—";return '<tr><td>'+esc(date)+'</td><td>—</td><td><strong>'+esc(x.title)+'</strong><small>'+esc(x.audience||"All")+(x.body?" · "+esc(x.body):"")+'</small></td><td>—</td><td>—</td></tr>';}).join("");
 }
 function safeHttpUrl(value){
  try{const url=new URL(String(value||""));return url.protocol==="https:"||url.protocol==="http:"?url.href:"";}catch{return "";}
@@ -26,40 +21,17 @@ function readPublishedEvents(){
 function renderUpcomingEmptyState(root,message){
  root.innerHTML='<div class="upcoming-empty"><span class="upcoming-empty-icon">✦</span><div><strong>Nothing scheduled just yet</strong><p>'+esc(message||"Published school and unit activities will appear here as soon as they are announced.")+'</p></div><span class="upcoming-empty-note">CHECK BACK SOON</span></div>';
 }
-function initUpcomingProgrammes(){
+async function initUpcomingProgrammes(){
  const root=document.getElementById("upcomingProgrammeList");if(!root)return;
+ const client=window.oymsSupabase;if(!client){renderUpcomingEmptyState(root,"Shared programme information is temporarily unavailable.");return;}
  try{
   const today=new Date();today.setHours(0,0,0,0);
-  const rows=readPublishedEvents().filter(x=>new Date(x.date+"T00:00:00")>=today).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
-  if(!rows.length){renderUpcomingEmptyState(root,"New school and unit programmes will be featured here once the Super Administrator publishes them.");return;}
-  root.innerHTML=rows.map(x=>{
-   const d=new Date(x.date+"T00:00:00"),attach=safeHttpUrl(x.attachmentUrl),registration=safeHttpUrl(x.registrationUrl);
-   const details=[x.time,x.section||"All Sections",x.venue,x.organiser?"Organiser: "+x.organiser:""].filter(Boolean).map(esc).join(" · ");
-   return '<article class="upcoming-programme-card"><time datetime="'+esc(x.date)+'"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString("en-IN",{month:"short",year:"numeric"})+'</span></time><div class="upcoming-programme-copy"><h3>'+esc(x.title||"School Programme")+'</h3><p>'+details+'</p>'+(x.description?'<small>'+esc(x.description)+'</small>':"")+'<div class="upcoming-programme-links">'+(attach?'<a href="'+attach+'" target="_blank" rel="noopener noreferrer">Programme attachment ↗</a>':"")+(registration?'<a href="'+registration+'" target="_blank" rel="noopener noreferrer">Registration ↗</a>':"")+'</div></div></article>';
-  }).join("");
- }catch(error){
-  console.error("Upcoming programmes could not be rendered.",error);
-  renderUpcomingEmptyState(root,"Please refresh the page. Upcoming programme information is temporarily unavailable.");
- }
-}
-document.addEventListener("DOMContentLoaded",async()=>{
- const explore=document.getElementById("explore");if(explore)explore.onclick=()=>document.getElementById("sections")?.scrollIntoView({behavior:"smooth"});
- const contactLogin=document.getElementById("contactLogin");if(contactLogin)contactLogin.onclick=()=>window.location.href="login.html";
- initSidebarNavigation();
- initTemporaryMenuLinks();
- initUpcomingProgrammes();
- try{initActivityCalendar();}catch(error){console.error("Activity calendar could not be initialized.",error);}
- try{await PortalStorage.init();renderPublicCirculars();renderPublicGallery();}
- catch(error){console.warn("Local preview media is unavailable; shared homepage slides will still load.",error);}
- await initHeroSlideshow();
-});
-async function renderPublicGallery(){
- const root=document.getElementById("publicGallery");if(!root)return;
- try{
-  const items=(await PortalStorage.allPhotos()).filter(x=>x.status==="Published"&&!x.archived).sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||""));
-  if(!items.length){root.innerHTML='<p class="muted">No photographs or videos have been published yet.</p>';return;}
-  root.innerHTML=items.map(x=>{const blob=x.mediaBlob||x.imageBlob,src=fileUrl(blob),isVideo=(x.mediaType||"").startsWith("video/");return '<figure class="gallery-card">'+(isVideo?'<video src="'+src+'" controls playsinline preload="metadata"></video>':'<img src="'+src+'" alt="'+esc(x.title||"School Scout and Guide activity")+'">')+'<figcaption><b>'+esc(x.title||"Activity media")+'</b>'+(x.caption?'<span>'+esc(x.caption)+'</span>':"")+'</figcaption></figure>';}).join("");
- }catch(error){root.innerHTML='<p class="muted">Gallery storage is not available in this browser.</p>';console.error(error);}
+  const {data:rows,error}=await client.from("events").select("id,title,event_type,event_date,venue,description,status").gte("event_date",today.toISOString().slice(0,10)).order("event_date",{ascending:true}).limit(20);
+  if(error)throw error;
+  const published=(rows||[]).filter(x=>String(x.status||"").toLowerCase()!=="draft").slice(0,3);
+  if(!published.length){renderUpcomingEmptyState(root,"New school and unit programmes will appear here once the Super Administrator publishes them.");return;}
+  root.innerHTML=published.map(x=>{const d=new Date(x.event_date+"T00:00:00"),details=[x.event_type,x.venue].filter(Boolean).map(esc).join(" · ");return '<article class="upcoming-programme-card"><time datetime="'+esc(x.event_date)+'"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString("en-IN",{month:"short",year:"numeric"})+'</span></time><div class="upcoming-programme-copy"><h3>'+esc(x.title||"School Programme")+'</h3><p>'+details+'</p>'+(x.description?'<small>'+esc(x.description)+'</small>':"")+'</div></article>';}).join("");
+ }catch(error){console.error("Upcoming programmes could not be rendered.",error);renderUpcomingEmptyState(root,"Published programme information is temporarily unavailable.");}
 }
 async function initHeroSlideshow(){
  const track=document.querySelector(".slide-track"),dotsRoot=document.querySelector(".slide-dots"),hero=track?.closest(".hero-slideshow");
