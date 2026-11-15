@@ -34,10 +34,10 @@ function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
-const superItems=[["overview","Dashboard"],["instantPopup","Send Instant Pop Up"]];
+const superItems=[["instantPopup","Send Instant Pop Up"]];
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
- Administrator:[["overview","Dashboard"]],
+ Administrator:[],
  "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Assistant Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
@@ -52,10 +52,17 @@ documentsLink.href="https://documents.bsgindia.org/";
 documentsLink.target="_blank";
 documentsLink.rel="noopener noreferrer";
 documentsLink.textContent="BSG Documents ↗";
-nav.appendChild(documentsLink);
+if(!isSuper&&role!=="Administrator")nav.appendChild(documentsLink);
 
 async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+ if(isSuper||role==="Administrator"){
+  if(view==="users")return window.OYMSUserManagementDemo?.open();
+  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
+  if(isSuper&&view==="overview")return overview();
+  if(view==="overview")return overview();
+  return overview();
+ }
  if(view==="school"&&isSuper)return schoolDetails();
  if(view==="profile")return profile();
  if(view==="circulars")return circulars();
@@ -643,4 +650,4 @@ window.addEventListener("storage",e=>{if(e.key===ANNOUNCEMENT_KEY)checkForUserAn
 window.addEventListener("focus",checkForUserAnnouncement);
 
 
-PortalStorage.init().then(()=>{showView(isSuper?"school":"overview");checkForUserAnnouncement();}).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView(isSuper?"school":"overview");checkForUserAnnouncement();});
+PortalStorage.init().then(()=>{showView((isSuper||role==="Administrator")?"users":"overview");checkForUserAnnouncement();}).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView((isSuper||role==="Administrator")?"users":"overview");checkForUserAnnouncement();});
