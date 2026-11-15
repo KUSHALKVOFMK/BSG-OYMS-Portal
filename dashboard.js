@@ -34,7 +34,7 @@ function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
-const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["slideshow","Homepage Slideshow"],["circulars","Circulars"],["manage","Circular Management"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"]];
+const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["slideshow","Homepage Slideshow"],["circulars","Circulars"],["manage","Circular Management"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"],["instantPopup","Send Instant Pop Up"]];
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
  Administrator:[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["manage","Circular Management"],["events","Events & Activities"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"]],
@@ -72,6 +72,7 @@ async function showView(view){
  if(view==="progression"&&isSuper)return progressionAppreciation();
  if(view==="events"&&canManageEvents)return eventManagement();
  if(view==="slideshow"&&isSuper)return manageSlideshow();
+ if(view==="instantPopup"&&isSuper)return instantAnnouncementAdmin();
  if(view==="reports"&&isSuper)return reports();
  if(view==="logs"&&isSuper)return activityLogs();
  if(view==="accounts"&&isSuper)return accountControls();
@@ -511,4 +512,112 @@ async function renderHomepageSlides(){
  }));
 }
 
-PortalStorage.init().then(()=>showView(isSuper?"school":"overview")).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView(isSuper?"school":"overview");});
+
+/* Instant announcement preview: browser-local demo only until shared storage is connected. */
+const ANNOUNCEMENT_KEY="kvs_oyms_demo_instant_announcement_v1";
+const ANNOUNCEMENT_SEEN_KEY="kvs_oyms_demo_instant_announcement_seen_v1";
+let announcementTicker=null;
+let announcementNoticeShownFor="";
+function getInstantAnnouncement(){return readLocal(ANNOUNCEMENT_KEY,null);}
+function setInstantAnnouncement(item){writeLocal(ANNOUNCEMENT_KEY,item);}
+function updateAnnouncementStatus(item){
+ if(!item)return null;
+ if(item.status==="Scheduled"&&Date.now()>=Number(item.publishAt||0)){
+  item.status="Published";item.publishedAt=new Date().toISOString();setInstantAnnouncement(item);
+ }
+ return item;
+}
+function announcementSeenIds(){return readLocal(ANNOUNCEMENT_SEEN_KEY,{});}
+function announcementSeenKey(item){return String(item?.id||"")+"::"+String(session?.loginId||roleSlug||"user");}
+function hasSeenAnnouncement(item){return Boolean(announcementSeenIds()[announcementSeenKey(item)]);}
+function markAnnouncementSeen(item){
+ const seen=announcementSeenIds();seen[announcementSeenKey(item)]=new Date().toISOString();writeLocal(ANNOUNCEMENT_SEEN_KEY,seen);
+}
+function instantAnnouncementAdmin(){
+ const item=updateAnnouncementStatus(getInstantAnnouncement());
+ main.innerHTML='<h1>Send Instant Pop Up</h1><p>Create a short announcement for portal users. The announcement appears after the countdown you choose.</p>'+
+ '<div class="dash-alert"><b>Demo preview limitation:</b> This version saves announcements in this browser only. It will work for testing on this same browser/device. To deliver announcements to users on different devices, shared database storage must be connected later.</div>'+
+ '<form id="instantAnnouncementForm" class="dash-panel"><div class="dash-form-grid">'+
+ '<div class="dash-field full"><label for="instantAnnouncementTitle">Subject / Title</label><input id="instantAnnouncementTitle" maxlength="100" required placeholder="e.g. Important SANKALP 2.0 Update"></div>'+
+ '<div class="dash-field full"><label for="instantAnnouncementDescription">Description</label><textarea id="instantAnnouncementDescription" rows="5" maxlength="1200" required placeholder="Write the update that portal users should read"></textarea></div>'+
+ '<div class="dash-field"><label for="instantAnnouncementDelay">Publish countdown</label><select id="instantAnnouncementDelay"><option value="30">30 seconds (test)</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="600">10 minutes</option></select><small class="field-help">Countdown is for publishing only. Users will not see a countdown.</small></div>'+
+ '</div><div id="instantAnnouncementStatus" class="instant-announcement-status" role="status" aria-live="polite">Ready to create an announcement.</div><button class="dash-primary" id="sendInstantAnnouncement" type="submit">Send Announcement</button></form>'+
+ '<section class="dash-panel instant-current"><h2>Current Announcement</h2><div id="instantAnnouncementCurrent"></div></section>';
+ const form=document.getElementById("instantAnnouncementForm");
+ form.addEventListener("submit",e=>{
+  e.preventDefault();
+  const title=document.getElementById("instantAnnouncementTitle").value.trim();
+  const description=document.getElementById("instantAnnouncementDescription").value.trim();
+  const delaySeconds=Number(document.getElementById("instantAnnouncementDelay").value)||30;
+  if(!title||!description){alert("Please enter both a subject and description.");return;}
+  const now=Date.now();
+  const next={id:"announcement-"+now,title,description,delaySeconds,createdAt:new Date(now).toISOString(),publishAt:now+delaySeconds*1000,status:"Scheduled",createdBy:actor};
+  setInstantAnnouncement(next);logAction("Scheduled instant announcement",title);
+  form.reset();
+  document.getElementById("instantAnnouncementStatus").textContent="Announcement queued. Publishing in "+delaySeconds+" seconds…";
+  renderInstantAnnouncementCurrent();
+  startAnnouncementAdminTicker();
+ });
+ renderInstantAnnouncementCurrent();
+ if(item?.status==="Scheduled")startAnnouncementAdminTicker();
+}
+function renderInstantAnnouncementCurrent(){
+ const root=document.getElementById("instantAnnouncementCurrent");if(!root)return;
+ const item=updateAnnouncementStatus(getInstantAnnouncement());
+ if(!item){root.innerHTML='<p class="dash-empty">No announcement has been created yet.</p>';return;}
+ const remaining=Math.max(0,Math.ceil((Number(item.publishAt||0)-Date.now())/1000));
+ const status=item.status==="Scheduled"?"Publishing in "+remaining+" seconds":"Published";
+ root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\\n/g,"<br>")+'</p><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';
+}
+function startAnnouncementAdminTicker(){
+ if(announcementTicker)clearInterval(announcementTicker);
+ announcementTicker=setInterval(()=>{
+  const item=updateAnnouncementStatus(getInstantAnnouncement());
+  const status=document.getElementById("instantAnnouncementStatus");
+  if(!item||item.status==="Published"){
+   if(status)status.textContent="✓ Announcement is now published. Users will see a Tap to view update notice when they open their dashboard.";
+   renderInstantAnnouncementCurrent();clearInterval(announcementTicker);announcementTicker=null;return;
+  }
+  if(status)status.textContent="Publishing in "+Math.max(0,Math.ceil((item.publishAt-Date.now())/1000))+" seconds…";
+  renderInstantAnnouncementCurrent();
+ },250);
+}
+function checkForUserAnnouncement(){
+ if(isSuper)return;
+ const item=updateAnnouncementStatus(getInstantAnnouncement());
+ if(!item||item.status!=="Published"||hasSeenAnnouncement(item)||announcementNoticeShownFor===item.id)return;
+ announcementNoticeShownFor=item.id;
+ let notice=document.getElementById("instantAnnouncementNotice");
+ if(!notice){
+  notice=document.createElement("button");notice.type="button";notice.id="instantAnnouncementNotice";notice.className="instant-announcement-notice";
+  const shell=document.querySelector(".dash-shell");
+  if(shell)shell.parentNode.insertBefore(notice,shell);
+ }
+ notice.innerHTML='<span class="instant-notice-icon">✦</span><span><b>New update available</b><small>'+esc(item.title)+'</small></span><strong>Tap to view →</strong>';
+ notice.onclick=()=>openInstantAnnouncement(item);
+}
+function openInstantAnnouncement(item){
+ if(!item)return;
+ const overlay=document.createElement("div");overlay.className="instant-announcement-overlay";overlay.id="instantAnnouncementOverlay";
+ overlay.innerHTML='<section class="instant-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="instantAnnouncementModalTitle"><button type="button" class="instant-announcement-close" aria-label="Close announcement">×</button><div class="instant-announcement-spark">✦</div><p class="instant-announcement-kicker">SANKALP 2.0 · PORTAL UPDATE</p><h2 id="instantAnnouncementModalTitle">'+esc(item.title)+'</h2><div class="instant-announcement-copy">'+esc(item.description).replace(/\\n/g,"<br>")+'</div><button type="button" class="dash-primary instant-announcement-done">Got it</button></section>';
+ document.body.appendChild(overlay);
+ const close=()=>{markAnnouncementSeen(item);overlay.remove();document.getElementById("instantAnnouncementNotice")?.remove();launchAnnouncementConfetti();};
+ overlay.querySelector(".instant-announcement-close").addEventListener("click",close);
+ overlay.querySelector(".instant-announcement-done").addEventListener("click",close);
+ overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+ launchAnnouncementConfetti();
+}
+function launchAnnouncementConfetti(){
+ const colors=["#e7b94d","#7c3aed","#16a34a","#ec4899","#2563eb"];
+ for(let i=0;i<42;i++){
+  const bit=document.createElement("i");bit.className="instant-confetti";
+  bit.style.left=(Math.random()*100)+"%";bit.style.background=colors[i%colors.length];
+  bit.style.animationDelay=(Math.random()*.7)+"s";bit.style.setProperty("--fall",(65+Math.random()*55)+"vh");
+  document.body.appendChild(bit);setTimeout(()=>bit.remove(),2400);
+ }
+}
+window.addEventListener("storage",e=>{if(e.key===ANNOUNCEMENT_KEY)checkForUserAnnouncement();});
+window.addEventListener("focus",checkForUserAnnouncement);
+
+
+PortalStorage.init().then(()=>{showView(isSuper?"school":"overview");checkForUserAnnouncement();}).catch(error=>{main.innerHTML='<div class="dash-alert">Browser file storage could not be opened. '+esc(error.message)+'</div>';showView(isSuper?"school":"overview");checkForUserAnnouncement();});
