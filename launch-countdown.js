@@ -24,7 +24,7 @@
    #oymsLaunchGate .gate-media img,#oymsLaunchGate .gate-media video{display:block;width:auto;height:auto;max-width:100%;max-height:42vh;object-fit:contain;border-radius:12px;background:#10091b}
    #oymsLaunchGate .gate-progress{height:5px;margin-top:22px;overflow:hidden;border-radius:99px;background:#ffffff25}
    #oymsLaunchGate .gate-progress i{display:block;height:100%;width:100%;transform-origin:left;background:#f5d98c}
-   .oyms-launch-confetti{position:fixed;z-index:2147483001;top:-14px;width:9px;height:14px;border-radius:2px;pointer-events:none;animation:oymsLaunchFall 2.4s ease-in forwards}
+   .oyms-launch-confetti{position:fixed!important;display:block!important;z-index:2147483647!important;top:-18px!important;width:10px!important;height:16px!important;border-radius:2px;pointer-events:none;opacity:1!important;animation:oymsLaunchFall 2.8s linear forwards!important}
    @keyframes oymsLaunchFall{to{transform:translateY(var(--fall,85vh)) rotate(720deg);opacity:0}}
    @media(max-width:600px){#oymsLaunchGate .gate-card{padding:22px 16px}#oymsLaunchGate .gate-media{max-height:34vh}#oymsLaunchGate .gate-media img,#oymsLaunchGate .gate-media video{max-height:34vh}}
    @media(prefers-reduced-motion:reduce){#oymsLaunchGate *,.oyms-launch-confetti{animation:none!important;transition:none!important}}
@@ -35,7 +35,8 @@
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const close=()=>{document.getElementById("oymsLaunchGate")?.remove();if(timer)clearInterval(timer);timer=null;};
  const confetti=()=>{const colors=["#e7b94d","#7c3aed","#16a34a","#ec4899","#2563eb"];for(let i=0;i<64;i++){const b=document.createElement("i");b.className="oyms-launch-confetti";b.style.left=(Math.random()*100)+"%";b.style.background=colors[i%colors.length];b.style.animationDelay=(Math.random()*.8)+"s";b.style.setProperty("--fall",(65+Math.random()*55)+"vh");document.body.appendChild(b);setTimeout(()=>b.remove(),2800);}};
- const websiteCelebration=()=>{const until=Date.now()+5000;confetti();const burst=setInterval(()=>{if(Date.now()>=until){clearInterval(burst);return;}confetti();},850);};
+ const confettiBurst=()=>{const until=Date.now()+5000;const fire=()=>{if(Date.now()>=until){clearInterval(burst);return;}confetti();};fire();const burst=setInterval(fire,650);};
+ const websiteCelebration=()=>confettiBurst();
  const loadMedia=async(id,type,root)=>{
   if(!id||!root)return;
   try{
@@ -61,7 +62,7 @@
   }
   if(!popupShownUntil){const desired=Number(item.popupDurationMs||10000);popupShownUntil=Math.min(now+Math.max(10000,Math.min(120000,desired)),endAt);}
   if(now>=popupShownUntil){close();markSeenToday(item);if(!item.websiteCelebrationShown){item.websiteCelebrationShown=true;try{localStorage.setItem(KEY,JSON.stringify(item));}catch{}websiteCelebration();}return;}
-  if(confettiFor!==item.id){confettiFor=item.id;confetti();}
+  if(confettiFor!==item.id){confettiFor=item.id;confettiBurst();}
   const remain=Math.max(0,Math.ceil((popupShownUntil-now)/1000));
   el.innerHTML='<section class="gate-card"><span class="gate-kicker">SANKALP 2.0 · PORTAL UPDATE</span><h1>Website is now open</h1><div class="gate-popup"><h2>'+esc(item.title||"Important Update")+'</h2><p>'+esc(item.description||"A new update is available.")+'</p><div class="gate-media" id="oymsLaunchMedia"></div></div><div class="gate-progress"><i style="transform:scaleX('+Math.max(0,remain/Math.max(1,Math.ceil((popupShownUntil-(item.countdownEndsAt||start+30000))/1000)))+')"></i></div><p style="margin-top:12px;font-size:12px">This announcement will close automatically in '+remain+' seconds.</p></section>';
   if(item.mediaId)loadMedia(item.mediaId,item.mediaType,el.querySelector("#oymsLaunchMedia"));
