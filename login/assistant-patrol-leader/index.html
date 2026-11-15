@@ -11,12 +11,12 @@
 </header>
 
 <main class="auth-main"><section class="auth-card">
- <p class="role-kicker">ROLE LOGIN</p><h1>Assistant Patrol Leader Login</h1><p class="sub">Enter your assigned Login ID and password to continue.</p>
- <div id="authMessage" class="auth-message" role="alert"></div>
+ <p class="role-kicker">ROLE PREVIEW LOGIN</p><h1>Assistant Patrol Leader Login</h1><p class="sub">Use the preview credentials below to open this role dashboard. This is not a real account sign-in.</p>
+ <div id="authMessage" class="auth-message" role="alert" aria-live="polite"></div>
  <form id="loginForm" data-role="assistant-patrol-leader">
   <div class="auth-field"><label for="loginId">Login ID</label><input id="loginId" name="loginId" autocomplete="username" placeholder="Enter your Login ID" required></div>
   <div class="auth-field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div>
-  <div class="auth-row"><label class="auth-check"><input type="checkbox" id="remember"> Remember this device</label><button type="button" class="auth-link" id="forgot">Forgot password?</button></div>
+  <div class="auth-row" style="justify-content:flex-end"><button type="button" class="auth-link" id="forgot">Forgot password?</button></div>
   <button class="auth-btn" type="submit">Sign In as Assistant Patrol Leader</button>
  </form>
  <div class="demo-note"><b>Preview credentials only</b><br>Login ID: <b>DEMO-USER-001</b><br>Password: <b>DEMO-ONLY</b><br>These are demonstration credentials, not real accounts. Never enter a personal or school password.</div>
