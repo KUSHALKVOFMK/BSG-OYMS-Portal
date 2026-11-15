@@ -529,8 +529,12 @@ function getInstantAnnouncement(){return readLocal(ANNOUNCEMENT_KEY,null);}
 function setInstantAnnouncement(item){writeLocal(ANNOUNCEMENT_KEY,item);}
 function updateAnnouncementStatus(item){
  if(!item)return null;
- if(item.status==="Scheduled"&&Date.now()>=Number(item.publishAt||0)){
+ const now=Date.now();
+ if(item.status==="Scheduled"&&now>=Number(item.publishAt||0)){
   item.status="Published";item.publishedAt=new Date().toISOString();setInstantAnnouncement(item);
+ }
+ if(item.status==="Published"&&Number(item.endAt||0)>0&&now>=Number(item.endAt)){
+  item.status="Expired";item.expiredAt=new Date().toISOString();setInstantAnnouncement(item);
  }
  return item;
 }
@@ -548,7 +552,7 @@ function instantAnnouncementAdmin(){
  '<div class="dash-field full"><label for="instantAnnouncementTitle">Subject / Title</label><input id="instantAnnouncementTitle" maxlength="100" required placeholder="e.g. Important SANKALP 2.0 Update"></div>'+
  '<div class="dash-field full"><label for="instantAnnouncementDescription">Description</label><textarea id="instantAnnouncementDescription" rows="5" maxlength="1200" required placeholder="Write the update that portal users should read"></textarea></div>'+
  '<div class="dash-field full"><label for="instantAnnouncementMedia">Image or video (optional)</label><input id="instantAnnouncementMedia" type="file" accept="image/*,video/mp4,video/webm,video/quicktime"><small class="field-help">One image or a video up to 30 seconds and 80 MB.</small><div id="instantAnnouncementMediaPreview" class="instant-media-preview"></div></div>'+
- '<div class="dash-field"><label>Launch countdown</label><input value="30 seconds" readonly><small class="field-help">The website will be hidden during this countdown, then the announcement will show for 10 seconds.</small></div>'+
+ '<div class="dash-field"><label>Launch countdown</label><input value="30 seconds" readonly><small class="field-help">The website will be hidden during this countdown. After launch, each visitor sees the announcement for 10 seconds until its end date.</small></div>'+'<div class="dash-field"><label for="instantAnnouncementEndDate">Announcement end date and time</label><input id="instantAnnouncementEndDate" type="datetime-local" required><small class="field-help">New visitors will continue seeing this announcement until this date and time.</small></div>'+
  '</div><div id="instantAnnouncementStatus" class="instant-announcement-status" role="status" aria-live="polite">Ready to create an announcement.</div><button class="dash-primary" id="sendInstantAnnouncement" type="submit">Send Announcement</button></form>'+
  '<section class="dash-panel instant-current"><h2>Current Announcement</h2><div id="instantAnnouncementCurrent"></div></section>';
  const form=document.getElementById("instantAnnouncementForm");
@@ -557,16 +561,19 @@ function instantAnnouncementAdmin(){
   e.preventDefault();
   const title=document.getElementById("instantAnnouncementTitle").value.trim();
   const description=document.getElementById("instantAnnouncementDescription").value.trim();
+  const endDateValue=document.getElementById("instantAnnouncementEndDate").value;
   const mediaFile=document.getElementById("instantAnnouncementMedia")?.files?.[0]||null;
-  if(!title||!description){alert("Please enter both a subject and description.");return;}
+  if(!title||!description||!endDateValue){alert("Please enter the subject, description and announcement end date.");return;}
+  const endAt=new Date(endDateValue).getTime();
+  if(!Number.isFinite(endAt)||endAt<=Date.now()+30000){alert("Choose an end date and time at least 30 seconds after launch.");return;}
   (async()=>{try{
    if(mediaFile&&mediaFile.size>80*1024*1024)throw new Error("Media must be 80 MB or smaller.");
    if(mediaFile&&!mediaFile.type.startsWith("image/")&&!mediaFile.type.startsWith("video/"))throw new Error("Choose an image or video file.");
    if(mediaFile&&mediaFile.type.startsWith("video/")&&await checkAnnouncementVideoDuration(mediaFile)>30.25)throw new Error("Video must be 30 seconds or shorter.");
-   const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds:30,createdAt:new Date(now).toISOString(),publishAt:now+30000,status:"Scheduled",createdBy:actor};
+   const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds:30,createdAt:new Date(now).toISOString(),publishAt:now+30000,endAt,status:"Scheduled",createdBy:actor};
    if(mediaFile){next.mediaId=await saveAnnouncementMedia(mediaFile);next.mediaType=mediaFile.type;}
    setInstantAnnouncement(next);
-   writeLocal("kvs_oyms_demo_launch_event_v1",{id:next.id,title,description,startedAt:now,countdownEndsAt:now+30000,popupEndsAt:now+40000});
+   writeLocal("kvs_oyms_demo_launch_event_v1",{id:next.id,title,description,startedAt:now,countdownEndsAt:now+30000,announcementEndsAt:endAt,popupDurationMs:10000});
    logAction("Launched instant announcement",title);
    form.reset();document.getElementById("instantAnnouncementMediaPreview").innerHTML="";
    window.location.href="../../index.html";
@@ -599,7 +606,7 @@ function startAnnouncementAdminTicker(){
 function checkForUserAnnouncement(){
  if(isSuper)return;
  const launchEvent=readLocal("kvs_oyms_demo_launch_event_v1",null);
- if(launchEvent&&launchEvent.id===getInstantAnnouncement()?.id&&Date.now()<=Number(launchEvent.popupEndsAt||0))return;
+ if(launchEvent&&launchEvent.id===getInstantAnnouncement()?.id&&Date.now()<Number(launchEvent.announcementEndsAt||launchEvent.endAt||0))return;
  const item=updateAnnouncementStatus(getInstantAnnouncement());
  if(!item||item.status!=="Published"||hasSeenAnnouncement(item)||announcementNoticeShownFor===item.id)return;
  announcementNoticeShownFor=item.id;
