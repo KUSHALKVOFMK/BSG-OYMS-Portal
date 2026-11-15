@@ -1,11 +1,11 @@
 const form=document.getElementById("loginForm"),message=document.getElementById("authMessage");
 const slug=form.dataset.role;
-const roles={"super-admin":"super_admin","administrator":"administrator","unit-leader":"unit_leader","assistant-unit-leader":"assistant_unit_leader","patrol-leader":"patrol_leader","assistant-patrol-leader":"assistant_patrol_leader","member":"member"};
+const roles={"super-admin":"super_admin","patrol-leader":"patrol_leader"};
 function showMessage(text){message.textContent=text;message.style.display="block";}
 document.getElementById("forgot")?.addEventListener("click",()=>showMessage("For a forgotten password, contact the Super Administrator. A secure reset process can be arranged for your account."));
 form.addEventListener("submit",async event=>{
  event.preventDefault();message.style.display="none";
- const client=window.oymsSupabase;if(!client){showMessage("Secure sign-in could not load. Refresh this page and try again.");return;}
+ const client=window.oymsSupabase;if(!client){showMessage("Secure sign-in could not load. Refresh this page and try again.");return;}\n if(!roles[slug]){showMessage("Secure sign-in for this role is not enabled yet. Please use Super Administrator or Patrol Leader.");return;}
  const button=form.querySelector('button[type="submit"]'),loginId=document.getElementById("loginId").value.trim(),password=document.getElementById("password").value;
  button.disabled=true;button.textContent="Signing in…";
  try{
