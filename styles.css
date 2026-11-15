@@ -1205,3 +1205,17 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 .login-notice-card p{white-space:normal;overflow-wrap:anywhere;color:var(--ink)}
 .login-notice-card small{color:var(--muted)}
 @media(max-width:650px){.notice-recipient-list{grid-template-columns:1fr}.notice-recipient-head{align-items:flex-start;flex-direction:column}}
+
+
+/* Supplied KVS-OYMS OF 2.0 banner is the complete responsive public header. */
+.header-image-shell{position:relative;display:block;width:100%;margin:0;padding:0;line-height:0;background:#fff;overflow:hidden}
+.header-image-shell .header-image{display:block;width:100%;height:auto;max-width:none;object-fit:contain}
+.header-menu-hitarea,.header-login-hitarea{position:absolute;z-index:5;display:block;border:0;background:transparent;line-height:normal;cursor:pointer}
+.header-menu-hitarea{left:2.35%;top:72%;width:9.8%;height:25%;border-radius:12px}
+.header-login-hitarea{left:83.2%;top:70.5%;width:14.5%;height:27%;border-radius:14px}
+.header-menu-hitarea:focus-visible,.header-login-hitarea:focus-visible{outline:3px solid #ffca36;outline-offset:2px;background:#ffffff24}
+@media(max-width:700px){
+ .header-menu-hitarea{left:2%;top:68%;width:11%;height:30%;min-height:25px}
+ .header-login-hitarea{left:82%;top:68%;width:16%;height:30%;min-height:25px}
+}
+@media(prefers-reduced-motion:reduce){.header-image-shell *{scroll-behavior:auto}}
