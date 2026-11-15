@@ -74,9 +74,9 @@ const superItems=superGroups.flatMap(group=>group[1]);
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["notifications","Notifications"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
  Administrator:[["overview","Dashboard"],["notifications","Notifications"]],
- "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["notifications","Notifications"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Assistant Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
- "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
+ "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["notifications","Notifications"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Assistant Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  Member:memberItems
 };
