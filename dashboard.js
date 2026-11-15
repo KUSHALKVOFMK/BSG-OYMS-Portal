@@ -513,6 +513,13 @@ async function renderHomepageSlides(){
 }
 
 
+/* Announcement media is stored in IndexedDB rather than localStorage. */
+const ANNOUNCEMENT_MEDIA_DB="kvs_oyms_announcement_media_v1";
+function announcementMediaDb(){return new Promise((resolve,reject)=>{const q=indexedDB.open(ANNOUNCEMENT_MEDIA_DB,1);q.onupgradeneeded=()=>{if(!q.result.objectStoreNames.contains("media"))q.result.createObjectStore("media");};q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error||new Error("Could not open media storage."));});}
+async function saveAnnouncementMedia(file){const db=await announcementMediaDb(),id="announcement-media-"+Date.now();await new Promise((resolve,reject)=>{const tx=db.transaction("media","readwrite");tx.objectStore("media").put(file,id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error("Could not save media."));});db.close();return id;}
+async function getAnnouncementMedia(id){const db=await announcementMediaDb(),value=await new Promise((resolve,reject)=>{const q=db.transaction("media","readonly").objectStore("media").get(id);q.onsuccess=()=>resolve(q.result||null);q.onerror=()=>reject(q.error);});db.close();return value;}
+async function showAnnouncementMedia(id,type,root){if(!root)return;try{const blob=await getAnnouncementMedia(id);if(!blob){root.textContent="Attached media is unavailable in this browser.";return;}const url=URL.createObjectURL(blob),el=document.createElement(String(type||blob.type).startsWith("video/")?"video":"img");el.src=url;if(el.tagName==="VIDEO"){el.controls=true;el.playsInline=true;el.preload="metadata";}else el.alt="Announcement image";root.replaceChildren(el);}catch(e){root.textContent="Could not load attached media.";}}
+function checkAnnouncementVideoDuration(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),v=document.createElement("video");v.preload="metadata";v.onloadedmetadata=()=>{URL.revokeObjectURL(url);resolve(v.duration);};v.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Could not read this video file."));};v.src=url;});}
 /* Instant announcement preview: browser-local demo only until shared storage is connected. */
 const ANNOUNCEMENT_KEY="kvs_oyms_demo_instant_announcement_v1";
 const ANNOUNCEMENT_SEEN_KEY="kvs_oyms_demo_instant_announcement_seen_v1";
@@ -540,23 +547,20 @@ function instantAnnouncementAdmin(){
  '<form id="instantAnnouncementForm" class="dash-panel"><div class="dash-form-grid">'+
  '<div class="dash-field full"><label for="instantAnnouncementTitle">Subject / Title</label><input id="instantAnnouncementTitle" maxlength="100" required placeholder="e.g. Important SANKALP 2.0 Update"></div>'+
  '<div class="dash-field full"><label for="instantAnnouncementDescription">Description</label><textarea id="instantAnnouncementDescription" rows="5" maxlength="1200" required placeholder="Write the update that portal users should read"></textarea></div>'+
+ '<div class="dash-field full"><label for="instantAnnouncementMedia">Image or video (optional)</label><input id="instantAnnouncementMedia" type="file" accept="image/*,video/mp4,video/webm,video/quicktime"><small class="field-help">One image or a video up to 30 seconds and 80 MB.</small><div id="instantAnnouncementMediaPreview" class="instant-media-preview"></div></div>'+
  '<div class="dash-field"><label for="instantAnnouncementDelay">Publish countdown</label><select id="instantAnnouncementDelay"><option value="30">30 seconds (test)</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="600">10 minutes</option></select><small class="field-help">Countdown is for publishing only. Users will not see a countdown.</small></div>'+
  '</div><div id="instantAnnouncementStatus" class="instant-announcement-status" role="status" aria-live="polite">Ready to create an announcement.</div><button class="dash-primary" id="sendInstantAnnouncement" type="submit">Send Announcement</button></form>'+
  '<section class="dash-panel instant-current"><h2>Current Announcement</h2><div id="instantAnnouncementCurrent"></div></section>';
  const form=document.getElementById("instantAnnouncementForm");
+ document.getElementById("instantAnnouncementMedia").addEventListener("change",async e=>{const f=e.target.files?.[0],p=document.getElementById("instantAnnouncementMediaPreview");if(!p)return;p.innerHTML="";if(!f)return;if(f.size>80*1024*1024){e.target.value="";alert("Media must be 80 MB or smaller.");return;}if(f.type.startsWith("video/")){try{if(await checkAnnouncementVideoDuration(f)>30.25){e.target.value="";alert("Video must be 30 seconds or shorter.");return;}}catch(err){e.target.value="";alert(err.message);return;}}const u=URL.createObjectURL(f),el=document.createElement(f.type.startsWith("video/")?"video":"img");el.src=u;if(el.tagName==="VIDEO"){el.controls=true;el.playsInline=true;}else el.alt="Announcement preview";p.appendChild(el);});
  form.addEventListener("submit",e=>{
   e.preventDefault();
   const title=document.getElementById("instantAnnouncementTitle").value.trim();
   const description=document.getElementById("instantAnnouncementDescription").value.trim();
+  const mediaFile=document.getElementById("instantAnnouncementMedia")?.files?.[0]||null;
   const delaySeconds=Number(document.getElementById("instantAnnouncementDelay").value)||30;
   if(!title||!description){alert("Please enter both a subject and description.");return;}
-  const now=Date.now();
-  const next={id:"announcement-"+now,title,description,delaySeconds,createdAt:new Date(now).toISOString(),publishAt:now+delaySeconds*1000,status:"Scheduled",createdBy:actor};
-  setInstantAnnouncement(next);logAction("Scheduled instant announcement",title);
-  form.reset();
-  document.getElementById("instantAnnouncementStatus").textContent="Announcement queued. Publishing in "+delaySeconds+" seconds…";
-  renderInstantAnnouncementCurrent();
-  startAnnouncementAdminTicker();
+  (async()=>{try{if(mediaFile&&mediaFile.size>80*1024*1024)throw new Error("Media must be 80 MB or smaller.");if(mediaFile&&!mediaFile.type.startsWith("image/")&&!mediaFile.type.startsWith("video/"))throw new Error("Choose an image or video file.");if(mediaFile&&mediaFile.type.startsWith("video/")&&await checkAnnouncementVideoDuration(mediaFile)>30.25)throw new Error("Video must be 30 seconds or shorter.");const now=Date.now(),next={id:"announcement-"+now,title,description,delaySeconds,createdAt:new Date(now).toISOString(),publishAt:now+delaySeconds*1000,status:"Scheduled",createdBy:actor};if(mediaFile){next.mediaId=await saveAnnouncementMedia(mediaFile);next.mediaType=mediaFile.type;}setInstantAnnouncement(next);logAction("Scheduled instant announcement",title);form.reset();document.getElementById("instantAnnouncementMediaPreview").innerHTML="";document.getElementById("instantAnnouncementStatus").textContent="Announcement queued. Publishing in "+delaySeconds+" seconds…";renderInstantAnnouncementCurrent();startAnnouncementAdminTicker();}catch(err){document.getElementById("instantAnnouncementStatus").textContent="Could not schedule: "+(err.message||"Please try another file.");}})();
  });
  renderInstantAnnouncementCurrent();
  if(item?.status==="Scheduled")startAnnouncementAdminTicker();
@@ -567,7 +571,7 @@ function renderInstantAnnouncementCurrent(){
  if(!item){root.innerHTML='<p class="dash-empty">No announcement has been created yet.</p>';return;}
  const remaining=Math.max(0,Math.ceil((Number(item.publishAt||0)-Date.now())/1000));
  const status=item.status==="Scheduled"?"Publishing in "+remaining+" seconds":"Published";
- root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\n/g,"<br>")+'</p><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';
+ root.innerHTML='<div class="instant-current-card"><span class="dash-tag '+(item.status==="Published"?"published":"")+'">'+esc(status)+'</span><h3>'+esc(item.title)+'</h3><p>'+esc(item.description).replace(/\n/g,"<br>")+'</p><div id="instantCurrentMedia"></div><small>Created: '+esc(new Date(item.createdAt).toLocaleString())+'</small></div>';if(item.mediaId)showAnnouncementMedia(item.mediaId,item.mediaType,document.getElementById("instantCurrentMedia"));
 }
 function startAnnouncementAdminTicker(){
  if(announcementTicker)clearInterval(announcementTicker);
@@ -596,11 +600,11 @@ function checkForUserAnnouncement(){
  notice.innerHTML='<span class="instant-notice-icon">✦</span><span><b>New update available</b><small>'+esc(item.title)+'</small></span><strong>Tap to view →</strong>';
  notice.onclick=()=>openInstantAnnouncement(item);
 }
-function openInstantAnnouncement(item){
+async function openInstantAnnouncement(item){
  if(!item)return;
  const overlay=document.createElement("div");overlay.className="instant-announcement-overlay";overlay.id="instantAnnouncementOverlay";
- overlay.innerHTML='<section class="instant-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="instantAnnouncementModalTitle"><button type="button" class="instant-announcement-close" aria-label="Close announcement">×</button><div class="instant-announcement-spark">✦</div><p class="instant-announcement-kicker">SANKALP 2.0 · PORTAL UPDATE</p><h2 id="instantAnnouncementModalTitle">'+esc(item.title)+'</h2><div class="instant-announcement-copy">'+esc(item.description).replace(/\n/g,"<br>")+'</div><button type="button" class="dash-primary instant-announcement-done">Got it</button></section>';
- document.body.appendChild(overlay);
+ overlay.innerHTML='<section class="instant-announcement-modal" role="dialog" aria-modal="true" aria-labelledby="instantAnnouncementModalTitle"><button type="button" class="instant-announcement-close" aria-label="Close announcement">×</button><div class="instant-announcement-spark">✦</div><p class="instant-announcement-kicker">SANKALP 2.0 · PORTAL UPDATE</p><h2 id="instantAnnouncementModalTitle">'+esc(item.title)+'</h2><div class="instant-announcement-copy">'+esc(item.description).replace(/\n/g,"<br>")+'</div><div class="instant-announcement-media" id="instantAnnouncementModalMedia"></div><button type="button" class="dash-primary instant-announcement-done">Got it</button></section>';
+ document.body.appendChild(overlay);if(item.mediaId)await showAnnouncementMedia(item.mediaId,item.mediaType,overlay.querySelector("#instantAnnouncementModalMedia"));
  const close=()=>{markAnnouncementSeen(item);overlay.remove();document.getElementById("instantAnnouncementNotice")?.remove();launchAnnouncementConfetti();};
  overlay.querySelector(".instant-announcement-close").addEventListener("click",close);
  overlay.querySelector(".instant-announcement-done").addEventListener("click",close);
