@@ -8,7 +8,7 @@ const SETTINGS_KEY="kvs_oyms_demo_portal_settings_v1";
 const LOGS_KEY="kvs_oyms_demo_activity_logs_v1";
 let session=null;
 try{session=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");}catch{}
-if(!session||!session.demo){window.location.replace("../../login/");}
+if(!session){window.location.replace("../../login/");}
 const role=session?.role||"Member";
 const roleSlug=session?.roleSlug||"member";
 const routeRoleSlug=document.body.dataset.role||"";
@@ -21,9 +21,9 @@ const canUploadGallery=isSuper;
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 const actor=session?.name||role;
-document.getElementById("signedInAs").textContent=actor+" · Demo preview";
+document.getElementById("signedInAs").textContent=actor+(session?.demo?" · Demo preview":" · Secure account");
 if(!isSuper){document.body.classList.add("role-workspace-page");document.body.dataset.role=roleSlug;}
-document.getElementById("logout").addEventListener("click",()=>{sessionStorage.removeItem(SESSION_KEY);window.location.href="../../login/";});
+document.getElementById("logout").addEventListener("click",async()=>{try{await window.oymsSupabase?.auth.signOut();}catch{}sessionStorage.removeItem(SESSION_KEY);window.location.href="../../login/";});
 
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function readLocal(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback;}catch{return fallback;}}
@@ -66,7 +66,7 @@ function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
 const superGroups=[
- ["ADMIN MANAGEMENT",[["users","Admin Management"],["approvals","Administrator Approvals"],["loginIds","Login ID Registry"],["accounts","Account Controls"]]],
+ ["ADMIN MANAGEMENT",[["users","Admin Management"],["patrolAccounts","Patrol Leader Accounts"],["approvals","Administrator Approvals"],["loginIds","Login ID Registry"],["accounts","Account Controls"]]],
  ["PORTAL MANAGEMENT",[["gallery","Photo & Video Gallery"],["reviewGallery","Gallery Review Queue"],["circularsManage","Notifications & Circulars"],["slideshow","Homepage Slides"],["events","Events & Activities"],["instantPopup","Instant Announcements"],["settings","Portal Settings"],["notificationsSend","Send Notifications"]]],
  ["MONITORING",[["reports","Reports & Analytics"],["logs","Activity Logs"]]]
 ];
@@ -103,6 +103,7 @@ async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  if(view==="overview")return overview();
  if(view==="users"&&(isSuper||role==="Administrator"))return window.OYMSUserManagementDemo?.open();
+ if(isSuper&&view==="patrolAccounts")return patrolAccountManagement();
  if(isSuper&&view==="notificationsSend")return sendNotifications();
  if(view==="notifications")return myNotifications();
  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
@@ -414,6 +415,35 @@ function adminApprovals(){
  root.querySelectorAll("[data-approve],[data-reject],[data-suspend],[data-reactivate]").forEach(b=>b.addEventListener("click",()=>{const rows=getApprovals(),x=rows.find(a=>a.id===b.dataset.approve||a.id===b.dataset.reject||a.id===b.dataset.suspend||a.id===b.dataset.reactivate);if(!x)return;x.status=b.dataset.approve?"Approved":b.dataset.reject?"Rejected":b.dataset.suspend?"Suspended":"Approved";x.reviewedBy=actor;x.reviewedAt=new Date().toISOString();writeLocal(APPROVALS_KEY,rows);logAction("Admin request "+x.status,x.loginId);adminApprovals();}));
 }
 
+async function patrolAccountManagement(){
+ if(!isSuper){main.innerHTML='<div class="dash-alert">Only the Super Administrator can create Patrol Leader accounts.</div>';return;}
+ const client=window.oymsSupabase;
+ main.innerHTML='<h1>Patrol Leader Accounts</h1><p>Create Login IDs and assign each Patrol Leader to a section and patrol.</p><div class="dash-alert"><b>Simple process:</b> Create the account here → give the Login ID and temporary password privately to the Patrol Leader → they sign in → they set their own password → complete their profile. Never send passwords in a public group.</div><form id="patrolAccountForm" class="dash-panel"><h2>Create Patrol Leader Login</h2><div class="dash-form-grid"><div class="dash-field"><label for="plFullName">Patrol Leader Full Name</label><input id="plFullName" maxlength="100" required></div><div class="dash-field"><label for="plCategory">BSG Section</label><select id="plCategory" required><option value="">Select section</option><option>Scout</option><option>Guide</option><option>Cub</option><option>Bulbul</option></select></div><div class="dash-field"><label for="plPatrolName">Patrol / Group Name</label><input id="plPatrolName" maxlength="80" required placeholder="e.g. Panther"></div><div class="dash-field"><label for="plLoginId">Create Login ID</label><input id="plLoginId" minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="off" required placeholder="e.g. panther01"><small class="field-help">3–30 letters, numbers, dots, underscores or hyphens.</small></div><div class="dash-field"><label for="plMobile">Mobile (optional)</label><input id="plMobile" inputmode="tel" maxlength="20"></div><div class="dash-field"><label for="plUid">BSG UID (optional)</label><input id="plUid" maxlength="40"></div><div class="dash-field full"><label for="plTempPassword">Temporary Password</label><div class="password-generate-row"><input id="plTempPassword" type="text" autocomplete="off" minlength="10" required><button class="dash-secondary" type="button" id="generatePlPassword">Generate secure password</button></div><small class="field-help">At least 10 characters. It is shown only after creation so you can give it privately to the Patrol Leader. They must change it on first sign-in.</small></div></div><button class="dash-primary" id="createPlAccount" type="submit">Create Login ID &amp; Assign Patrol</button><div id="plAccountStatus" class="slide-upload-status" role="status" aria-live="polite"></div></form><h2>Existing Patrol Leader Accounts</h2><div id="patrolAccountList" class="dash-table-wrap">Loading accounts…</div>';
+ const passwordField=document.getElementById("plTempPassword");
+ const makePassword=()=>{const chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";const bytes=new Uint32Array(16);crypto.getRandomValues(bytes);passwordField.value=Array.from(bytes,x=>chars[x%chars.length]).join("");};
+ document.getElementById("generatePlPassword").addEventListener("click",makePassword);makePassword();
+ document.getElementById("patrolAccountForm").addEventListener("submit",async e=>{
+  e.preventDefault();const button=document.getElementById("createPlAccount"),status=document.getElementById("plAccountStatus");
+  const body={full_name:document.getElementById("plFullName").value.trim(),category:document.getElementById("plCategory").value,patrol_name:document.getElementById("plPatrolName").value.trim(),login_id:document.getElementById("plLoginId").value.trim().toLowerCase(),mobile_number:document.getElementById("plMobile").value.trim(),bsg_uid:document.getElementById("plUid").value.trim(),password:passwordField.value};
+  if(body.password.length<10){status.textContent="Generate a password of at least 10 characters.";return;}
+  button.disabled=true;button.textContent="Creating…";status.textContent="Creating secure account and patrol assignment…";
+  try{
+   const {data,error}=await client.functions.invoke("create-patrol-account",{body});if(error)throw error;if(!data?.success)throw new Error(data?.error||"Account could not be created.");
+   status.className="slide-upload-status success";status.textContent="Created successfully. Login ID: "+data.login_id+" · Temporary password: "+body.password+" · Give these privately to the Patrol Leader. The password will not be shown again.";
+   logAction("Created Patrol Leader Login ID",data.login_id+" · "+body.category);e.target.reset();renderPatrolAccountList();makePassword();
+  }catch(error){status.className="slide-upload-status error";status.textContent=error.message||"Could not create the account. Check the Login ID and try again.";}
+  finally{button.disabled=false;button.textContent="Create Login ID & Assign Patrol";}
+ });
+ await renderPatrolAccountList();
+}
+async function renderPatrolAccountList(){
+ const root=document.getElementById("patrolAccountList");if(!root)return;
+ try{
+  const {data,error}=await window.oymsSupabase.from("profiles").select("id,full_name,login_id,category,patrol_name,is_active,must_change_password,created_at").eq("role","patrol_leader").order("created_at",{ascending:false});
+  if(error)throw error;
+  root.innerHTML=data?.length?'<table class="dash-table"><thead><tr><th>Patrol Leader</th><th>Login ID</th><th>Section</th><th>Patrol</th><th>Account</th><th>First Login</th></tr></thead><tbody>'+data.map(x=>'<tr><td>'+esc(x.full_name)+'</td><td><b>'+esc(x.login_id||"—")+'</b></td><td>'+esc(x.category||"—")+'</td><td>'+esc(x.patrol_name||"—")+'</td><td>'+(x.is_active?"Active":"Inactive")+'</td><td>'+(x.must_change_password?"Password change pending":"Set up")+'</td></tr>').join("")+'</tbody></table>':'<div class="dash-empty">No Patrol Leader accounts have been created yet.</div>';
+ }catch(error){root.innerHTML='<div class="dash-alert">Could not load accounts: '+esc(error.message)+'</div>';}
+}
 function loginIds(){
  const rows=getAccounts();
  main.innerHTML='<h1>All Login IDs</h1><p>View the login identifiers included in this demonstration.</p><div class="dash-alert">Only preview IDs are listed. New real accounts and credential resets must be handled by secure authentication, not by public browser code.</div><div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>Login ID</th><th>Role</th><th>Account Type</th><th>Status</th><th>Credential Tools</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><b>'+esc(x.id)+'</b></td><td>'+esc(x.role)+'</td><td>'+esc(x.kind||"Preview")+'</td><td><span class="dash-tag '+(x.status==="Active"?"published":"")+'">'+esc(x.status)+'</span></td><td><button class="dash-secondary" data-reset-id="'+esc(x.id)+'" disabled>Reset Login ID</button> <button class="dash-secondary" data-reset-pass="'+esc(x.id)+'" disabled>Reset Password</button></td></tr>').join("")+'</tbody></table></div><p class="dash-muted">Reset controls are shown but disabled until secure backend and email verification are connected.</p>';
