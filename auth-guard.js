@@ -13,6 +13,6 @@
  if(profile.must_change_password){window.location.replace("../../change-password.html");return;}
  if(profile.role==="patrol_leader"&&!profile.profile_completed_at){window.location.replace("../../profile-setup.html");return;}
  const load=src=>new Promise((resolve,reject)=>{const el=document.createElement("script");el.src=src;el.onload=resolve;el.onerror=reject;document.body.appendChild(el);});
- try{await load("../../dashboard.js?v=20261115d");await load("../../user-management.js?v=20261115b");await load("../../launch-countdown.js?v=20261115k");}
+ try{await load("../../dashboard.js?v=20261115e");await load("../../user-management.js?v=20261115b");await load("../../launch-countdown.js?v=20261115k");}
  catch(e){document.getElementById("dashMain").innerHTML="<div class='dash-alert'>The dashboard could not load. Refresh this page.</div>";console.error(e);}
 })();
