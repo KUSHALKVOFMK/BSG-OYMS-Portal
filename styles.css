@@ -1190,3 +1190,18 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 .instant-media-preview img,.instant-media-preview video,.instant-announcement-media img,.instant-announcement-media video{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:min(42vh,380px)!important;object-fit:contain!important;margin-inline:auto}
 .instant-announcement-modal{width:min(94vw,620px);max-width:620px;max-height:90vh;overflow:auto}
 @media(max-width:600px){.instant-media-preview img,.instant-media-preview video,.instant-announcement-media img,.instant-announcement-media video{max-height:34vh!important}.instant-announcement-modal{width:calc(100vw - 24px);max-height:88vh}}
+
+/* Login ID notification composer and inbox */
+.notice-recipient-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0 10px}
+.notice-recipient-head h2{margin:0}
+.notice-recipient-head label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--purple)}
+.notice-recipient-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0 18px}
+.notice-recipient{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:7px;background:#fcfbfd;cursor:pointer}
+.notice-recipient span{display:flex;flex-direction:column;gap:4px;min-width:0}
+.notice-recipient b{font-size:13px;color:var(--deep);overflow-wrap:anywhere}
+.notice-recipient small{font-size:11px;color:var(--muted)}
+.login-notice-card{padding:18px;margin:14px 0;border:1px solid var(--line);border-left:4px solid var(--purple);border-radius:8px;background:#fff}
+.login-notice-card h2{font-size:18px;margin:10px 0}
+.login-notice-card p{white-space:normal;overflow-wrap:anywhere;color:var(--ink)}
+.login-notice-card small{color:var(--muted)}
+@media(max-width:650px){.notice-recipient-list{grid-template-columns:1fr}.notice-recipient-head{align-items:flex-start;flex-direction:column}}
