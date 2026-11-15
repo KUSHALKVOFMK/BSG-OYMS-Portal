@@ -1183,3 +1183,10 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
  .dash-header.school-masthead .pm-shri-mark{grid-column:1;grid-row:2}
  .dash-header.school-masthead .portal-identity{grid-column:1/3;grid-row:3;justify-content:flex-start}
 }
+
+
+/* Announcement media: always fit the available panel without stretching or cropping */
+.instant-media-preview,.instant-announcement-media{width:100%;max-width:100%;min-width:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.instant-media-preview img,.instant-media-preview video,.instant-announcement-media img,.instant-announcement-media video{display:block;width:auto!important;height:auto!important;max-width:100%!important;max-height:min(42vh,380px)!important;object-fit:contain!important;margin-inline:auto}
+.instant-announcement-modal{width:min(94vw,620px);max-width:620px;max-height:90vh;overflow:auto}
+@media(max-width:600px){.instant-media-preview img,.instant-media-preview video,.instant-announcement-media img,.instant-announcement-media video{max-height:34vh!important}.instant-announcement-modal{width:calc(100vw - 24px);max-height:88vh}}
