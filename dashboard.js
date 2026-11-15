@@ -14,10 +14,10 @@ const roleSlug=session?.roleSlug||"member";
 const routeRoleSlug=document.body.dataset.role||"";
 if(session?.demo&&routeRoleSlug&&routeRoleSlug!==roleSlug)window.location.replace("../../"+roleSlug+"/dashboard/");
 const isSuper=role==="Super Administrator";
-const canReview=role==="Administrator"||isSuper;
-const canManageCirculars=role==="Administrator"||isSuper;
-const canManageEvents=role==="Administrator"||isSuper;
-const canUploadGallery=isSuper||["Administrator","Unit Leader","Assistant Unit Leader","Patrol Leader","Assistant Patrol Leader"].includes(role);
+const canReview=false;
+const canManageCirculars=false;
+const canManageEvents=false;
+const canUploadGallery=false;
 const main=document.getElementById("dashMain");
 const nav=document.getElementById("dashNav");
 const actor=session?.name||role;
@@ -34,10 +34,10 @@ function getAccounts(){let a=readLocal(ACCOUNTS_KEY,null);if(!Array.isArray(a)){
 function getApprovals(){return readLocal(APPROVALS_KEY,[]);}
 function getFreezeRequests(){return readLocal(FREEZE_KEY,[]);}
 function getSections(){let s=readLocal(SECTIONS_KEY,null);if(!Array.isArray(s)){s=[{id:"cubs",name:"Cubs",units:[]},{id:"bulbuls",name:"Bulbuls",units:[]},{id:"scouts",name:"Scouts",units:[]},{id:"guides",name:"Guides",units:[]}];writeLocal(SECTIONS_KEY,s);}return s;}
-const superItems=[["school","School & Personal Details"],["overview","Dashboard"],["approvals","Administrator Approval"],["loginIds","All Login IDs"],["sections","Cubs / Bulbuls / Scouts / Guides"],["patrols","Patrol & Member Registry"],["progression","Progression & Appreciation"],["events","Events & Activities"],["slideshow","Homepage Slideshow"],["circulars","Circulars"],["manage","Circular Management"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"],["reports","Reports & Analytics"],["logs","Activity Logs"],["accounts","Account Controls"],["settings","Portal Settings"],["freeze","Freeze / Unfreeze Requests"],["demo","Demo Accounts"],["instantPopup","Send Instant Pop Up"]];
+const superItems=[["overview","Dashboard"],["instantPopup","Send Instant Pop Up"]];
 const memberItems=[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["gallery","Photo Gallery"]];
 const roleItems={
- Administrator:[["overview","Dashboard"],["profile","My Profile"],["circulars","Circulars"],["manage","Circular Management"],["events","Events & Activities"],["gallery","Photo Gallery"],["reviewGallery","Verify Photo Uploads"]],
+ Administrator:[["overview","Dashboard"]],
  "Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Assistant Unit Leader":[["overview","Dashboard"],["profile","My Profile"],["unitOverview","Unit Overview"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
  "Patrol Leader":[["overview","Dashboard"],["profile","My Profile"],["patrolWorkspace","My Patrol"],["circulars","Circulars"],["activityCalendar","Activity Calendar"],["gallery","Photo Gallery"]],
