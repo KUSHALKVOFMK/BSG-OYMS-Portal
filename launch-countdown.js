@@ -32,6 +32,7 @@
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const close=()=>{document.getElementById("oymsLaunchGate")?.remove();if(timer)clearInterval(timer);timer=null;};
  const confetti=()=>{const colors=["#e7b94d","#7c3aed","#16a34a","#ec4899","#2563eb"];for(let i=0;i<64;i++){const b=document.createElement("i");b.className="oyms-launch-confetti";b.style.left=(Math.random()*100)+"%";b.style.background=colors[i%colors.length];b.style.animationDelay=(Math.random()*.8)+"s";b.style.setProperty("--fall",(65+Math.random()*55)+"vh");document.body.appendChild(b);setTimeout(()=>b.remove(),2800);}};
+ const websiteCelebration=()=>{const until=Date.now()+5000;confetti();const burst=setInterval(()=>{if(Date.now()>=until){clearInterval(burst);return;}confetti();},850);};
  const loadMedia=async(id,type,root)=>{
   if(!id||!root)return;
   try{
@@ -56,7 +57,7 @@
    return;
   }
   if(!popupShownUntil){const desired=Number(item.popupDurationMs||10000);popupShownUntil=Math.min(now+Math.max(10000,Math.min(120000,desired)),endAt);}
-  if(now>=popupShownUntil){close();return;}
+  if(now>=popupShownUntil){close();if(!item.websiteCelebrationShown){item.websiteCelebrationShown=true;try{localStorage.setItem(KEY,JSON.stringify(item));}catch{}websiteCelebration();}return;}
   if(confettiFor!==item.id){confettiFor=item.id;confetti();}
   const remain=Math.max(0,Math.ceil((popupShownUntil-now)/1000));
   el.innerHTML='<section class="gate-card"><span class="gate-kicker">SANKALP 2.0 · PORTAL UPDATE</span><h1>Website is now open</h1><div class="gate-popup"><h2>'+esc(item.title||"Important Update")+'</h2><p>'+esc(item.description||"A new update is available.")+'</p><div class="gate-media" id="oymsLaunchMedia"></div></div><div class="gate-progress"><i style="transform:scaleX('+Math.max(0,remain/Math.max(1,Math.ceil((popupShownUntil-(item.countdownEndsAt||start+30000))/1000)))+')"></i></div><p style="margin-top:12px;font-size:12px">This announcement will close automatically in '+remain+' seconds.</p></section>';
