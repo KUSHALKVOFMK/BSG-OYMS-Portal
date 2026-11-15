@@ -71,7 +71,7 @@ if(!isSuper&&role!=="Administrator")nav.appendChild(documentsLink);
 async function showView(view){
  document.querySelectorAll("#dashNav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  if(view==="overview")return overview();
- if(view==="users"&&isSuper)return window.OYMSUserManagementDemo?.open();
+ if(view==="users"&&(isSuper||role==="Administrator"))return window.OYMSUserManagementDemo?.open();
  if(isSuper&&view==="instantPopup")return instantAnnouncementAdmin();
  if(isSuper&&view==="circularsManage")return manageCirculars();
  if(isSuper&&view==="gallery")return manageGallery();
