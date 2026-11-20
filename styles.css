@@ -1304,3 +1304,13 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 .portal-nav-bar{background:#f5eff9!important;border-bottom:1px solid #d9c8e7!important}
 .portal-nav-bar .nav-bar-title{color:#4b0d78!important}
 @media(max-width:760px){.govbar{font-size:10px;flex-wrap:wrap}.govbar-tools{display:none}.school-masthead{grid-template-columns:55px 1fr 55px;gap:8px;padding:10px!important}.school-masthead .kvs-emblem,.school-masthead .pm-shri-emblem{width:48px;height:48px}.school-brand strong{font-size:15px!important}.school-brand span{font-size:10px!important}.school-brand small{font-size:9px}.portal-identity{grid-column:1/-1;justify-content:center;border-top:1px solid #eee;padding-top:7px}.kvs-site-nav a{padding:12px 10px!important;font-size:11px!important}.kvs-site-nav .contact-nav{margin-left:0}}
+
+/* Header More dropdown, matching the KVS purple navigation */
+.kvs-more-menu{position:relative;display:flex;align-items:stretch;color:#fff}
+.kvs-more-menu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;padding:15px 16px;color:#fff;font-size:13px;white-space:nowrap;border-right:1px solid #ffffff26}
+.kvs-more-menu>summary::-webkit-details-marker{display:none}
+.kvs-more-menu[open]>summary,.kvs-more-menu>summary:hover{background:#6815a0}
+.kvs-more-dropdown{position:absolute;z-index:1000;top:100%;left:0;min-width:205px;display:grid;background:#fff;border:1px solid #e4d7ed;border-radius:0 0 8px 8px;box-shadow:0 12px 28px #24103930;overflow:hidden}
+.kvs-more-dropdown a{display:block!important;color:#4b0d78!important;padding:12px 15px!important;border-bottom:1px solid #f0eaf5;font-size:12px!important;text-decoration:none}
+.kvs-more-dropdown a:hover{background:#f5eff9!important;color:#4b0d78!important}
+@media(max-width:760px){.kvs-more-menu>summary{padding:12px 10px;font-size:11px}.kvs-more-dropdown{position:fixed;top:auto;left:auto;right:12px;min-width:190px}}
