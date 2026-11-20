@@ -1289,3 +1289,18 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 .google-form-frame iframe{display:block;width:100%;min-height:900px;border:0}
 .contact-form-fallback{text-align:center;margin:16px 0 0}
 @media(max-width:640px){.contact-banner{border-radius:8px;padding:20px 14px}.contact-banner-main{gap:10px}.contact-banner-main h2{letter-spacing:-1px}.contact-banner-options{flex-direction:column;align-items:center}.contact-banner-options span{border-right:0;border-bottom:1px solid #e8bd52;width:100%;text-align:center}.contact-banner-options span:last-child{border-bottom:0}.contact-banner-footer{justify-content:center;text-align:center}.google-form-frame iframe{min-height:1100px}}
+
+/* Unified KVS-style institutional header */
+.govbar{background:#4b0d78!important;color:#fff!important;min-height:38px;padding:8px 2.2%!important;align-items:center;gap:14px}
+.govbar-tools{white-space:nowrap}.govbar-tools a{color:#fff;text-decoration:none;font-weight:700}
+.school-masthead{min-height:132px;display:grid;grid-template-columns:110px minmax(0,1fr) 90px minmax(160px,auto);gap:20px;padding:14px 2.2%!important;align-items:center;border-bottom:3px solid #d6a638!important}
+.school-brand{text-align:center;align-items:center}.school-brand strong{font-size:clamp(20px,2.5vw,31px)!important;color:#4b0d78!important;font-weight:800}.school-brand span{font-size:14px!important;color:#4a4055!important}.school-brand small{font-size:11px;color:#6b5c76}
+.kvs-emblem,.pm-shri-emblem,.bsg-emblem{object-fit:contain}
+.portal-identity{display:flex;align-items:center;gap:10px}.portal-identity strong{color:#4b0d78;font-size:20px}.portal-identity span{display:block;color:#65516f;font-size:11px}
+.kvs-site-nav{background:#4b0d78!important;border:0!important;padding:0 1.5%!important;display:flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}
+.kvs-site-nav a{color:#fff!important;white-space:nowrap;padding:15px 12px!important;font-size:13px!important;border-right:1px solid #ffffff26}
+.kvs-site-nav a:hover{background:#6815a0!important;color:#fff!important}
+.kvs-site-nav .contact-nav{margin-left:auto;background:#8618bd!important;border-radius:5px 5px 0 0;font-weight:800}
+.portal-nav-bar{background:#f5eff9!important;border-bottom:1px solid #d9c8e7!important}
+.portal-nav-bar .nav-bar-title{color:#4b0d78!important}
+@media(max-width:760px){.govbar{font-size:10px;flex-wrap:wrap}.govbar-tools{display:none}.school-masthead{grid-template-columns:55px 1fr 55px;gap:8px;padding:10px!important}.school-masthead .kvs-emblem,.school-masthead .pm-shri-emblem{width:48px;height:48px}.school-brand strong{font-size:15px!important}.school-brand span{font-size:10px!important}.school-brand small{font-size:9px}.portal-identity{grid-column:1/-1;justify-content:center;border-top:1px solid #eee;padding-top:7px}.kvs-site-nav a{padding:12px 10px!important;font-size:11px!important}.kvs-site-nav .contact-nav{margin-left:0}}
