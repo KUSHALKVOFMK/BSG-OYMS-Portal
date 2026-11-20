@@ -1249,3 +1249,43 @@ a:focus-visible,button:focus-visible{outline:3px solid #c084fc;outline-offset:3p
 .contact-form-fallback{text-align:center;color:var(--muted);font-size:13px;margin:16px 0 0}
 .contact-form-fallback a{color:var(--purple);font-weight:700}
 @media(max-width:640px){.contact-banner{border-radius:10px;padding:20px 14px}.contact-banner-main{gap:10px}.contact-banner-main h2{letter-spacing:-1px}.contact-banner-options{flex-direction:column;align-items:center}.contact-banner-options span{border-right:0;border-bottom:1px solid #f4d36b;width:100%;text-align:center}.contact-banner-options span:last-child{border-bottom:0}.contact-banner-footer{justify-content:center;text-align:center}.google-form-frame iframe{min-height:1050px}}
+
+/* KVS-inspired blue, white and gold identity; shared public and login screens */
+:root{--purple:#07518b;--deep:#073765;--gold:#d8a62b;--ink:#172b40;--muted:#5d6d7d;--line:#dce5ed;--paper:#fff;--bg:#f3f7fb}
+.govbar,.top-ribbon{background:#073765!important;color:#fff}
+.sitehead,.auth-top,.school-masthead{background:#fff!important;border-bottom:3px solid #d8a62b!important}
+.brandtext strong,.school-brand strong,.auth-card h1,.auth-card h2,.section-title h2{color:#073765}
+.portal-nav-bar,.mainnav{background:#07518b!important;border-color:#d8a62b!important}
+.portal-nav-bar a,.portal-nav-bar button,.mainnav a{color:#fff!important}
+.portal-nav-bar a:hover,.mainnav a:hover{background:#0b659f!important;color:#fff!important}
+.site-sidebar{border-right:3px solid #d8a62b}
+.sidebar-heading,.sidebar-login{background:#073765!important;color:#fff!important}
+.primary,.auth-btn,.contact-form-open{background:#07518b!important;color:#fff!important;border-color:#07518b!important}
+.primary:hover,.auth-btn:hover,.contact-form-open:hover{background:#073765!important}
+.auth-page{background:linear-gradient(140deg,#eaf3fa,#fff 58%,#edf6fb)!important}
+.auth-card,.login-panel{border-top:4px solid #07518b!important;box-shadow:0 14px 42px #07376518!important}
+.auth-field input,.auth-field select,.login-panel input{border-color:#cbd9e5!important}
+.auth-link,.auth-back,.contact-form-fallback a{color:#07518b!important}
+.contact-section{display:block!important;background:#f2f7fb!important}
+.contact-banner{position:relative;overflow:hidden;border-radius:10px;padding:clamp(22px,4vw,48px);margin:0 auto 30px;max-width:1400px;color:#fff;background:radial-gradient(circle at 10% 15%,#23a9cf 0,transparent 28%),linear-gradient(112deg,#073765,#07518b 58%,#0c83b5);border:3px solid #d8a62b;box-shadow:0 14px 35px #07376522}
+.contact-banner:before,.contact-banner:after{content:"";position:absolute;border:1px solid #ffffff2b;border-radius:50%;width:340px;height:340px;pointer-events:none}
+.contact-banner:before{right:-95px;top:-210px}.contact-banner:after{left:-190px;bottom:-270px}
+.contact-banner-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:clamp(11px,1.4vw,16px);font-weight:800;letter-spacing:1.2px;color:#f9e8b5}
+.contact-banner-main{display:flex;align-items:center;justify-content:center;gap:18px;margin:22px auto 4px;position:relative}
+.contact-mail-icon{display:grid;place-items:center;width:clamp(54px,7vw,88px);height:clamp(54px,7vw,88px);border:3px solid #e8bd52;border-radius:50%;font-size:clamp(30px,4vw,48px);background:#fff;color:#07518b}
+.contact-banner-main h2{font-size:clamp(42px,8vw,96px);line-height:1;margin:0;color:#fff;letter-spacing:-2px}
+.contact-banner-tagline{text-align:center;font-size:clamp(18px,3vw,32px);font-style:italic;color:#e7f7ff;margin:18px 0 26px}
+.contact-banner-options{display:flex;justify-content:center;flex-wrap:wrap;position:relative}
+.contact-banner-options span{padding:12px clamp(16px,4vw,48px);font-size:clamp(15px,2vw,22px);font-weight:800;border-right:1px solid #e8bd52}
+.contact-banner-options span:last-child{border:0}
+.contact-banner-footer{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;border-top:2px solid #e8bd52;margin-top:24px;padding-top:18px}
+.contact-banner-footer strong{font-size:clamp(19px,3vw,32px);font-style:italic}.contact-banner-footer span{font-size:14px;font-weight:700}
+.contact-form-panel{max-width:1100px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:clamp(18px,3vw,34px);box-shadow:0 8px 28px #0737650b}
+.contact-form-panel .section-title{margin-bottom:18px}
+.contact-form-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:14px 0 20px}
+.contact-form-open{display:inline-flex;gap:12px;align-items:center;text-decoration:none;padding:13px 22px;border-radius:5px;font-weight:800}
+.contact-form-note,.contact-form-fallback{color:var(--muted);font-size:13px;line-height:1.6}
+.google-form-frame{width:100%;overflow:hidden;border:1px solid #dce5ed;border-radius:8px;background:#fff}
+.google-form-frame iframe{display:block;width:100%;min-height:900px;border:0}
+.contact-form-fallback{text-align:center;margin:16px 0 0}
+@media(max-width:640px){.contact-banner{border-radius:8px;padding:20px 14px}.contact-banner-main{gap:10px}.contact-banner-main h2{letter-spacing:-1px}.contact-banner-options{flex-direction:column;align-items:center}.contact-banner-options span{border-right:0;border-bottom:1px solid #e8bd52;width:100%;text-align:center}.contact-banner-options span:last-child{border-bottom:0}.contact-banner-footer{justify-content:center;text-align:center}.google-form-frame iframe{min-height:1100px}}
